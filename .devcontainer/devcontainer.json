@@ -1,0 +1,36 @@
+{
+    "name": "Flutter Development Container",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "runArgs": [
+        "-v",
+        "/dev/bus/usb:/dev/bus/usb",
+        "-v",
+        "/tmp/.X11-unix:/tmp/.X11-unix:rw",
+        "-v",
+        "/usr/bin/xdg-open:/usr/bin/xdg-open",
+        "--privileged",
+        "--device-cgroup-rule=c 189:* rmw",
+        "-e",
+        "DISPLAY"
+    ],
+    "containerEnv": {
+        "ANDROID_HOME": "/usr/lib/android-sdk",
+        "ANDROID_SDK_ROOT": "/usr/lib/android-sdk",
+        "FLUTTER_ROOT": "/usr/lib/flutter"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "Dart-Code.dart-code",
+                "Dart-Code.flutter",
+                "redhat.vscode-xml",
+                "redhat.vscode-yaml"
+            ]
+        }
+    },
+    // "postCreateCommand": "flutter pub get",
+    "remoteUser": "ubuntu"
+}
