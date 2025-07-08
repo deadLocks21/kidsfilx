@@ -29,8 +29,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   Timer? _timer;
+  Timer? _uiTimer;
   bool _isDragging = false;
   bool _isLocked = false;
+  bool _showUI = true;
   final TextEditingController _codeController = TextEditingController();
   static const String _unlockCode = "1234";
 
@@ -53,9 +55,41 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
   }
 
+  void _showAndAutoHideUI() {
+    setState(() {
+      _showUI = true;
+    });
+    _startUITimer(4); // 4 secondes pour les clics sur l'écran
+  }
+
+  void _showUIWithShortTimer() {
+    setState(() {
+      _showUI = true;
+    });
+    _startUITimer(1); // 1 seconde pour le bouton play
+  }
+
+  void _hideUI() {
+    setState(() {
+      _showUI = false;
+    });
+  }
+
+  void _startUITimer(int seconds) {
+    _uiTimer?.cancel();
+    if (_controller.value.isPlaying) {
+      _uiTimer = Timer(Duration(seconds: seconds), () {
+        if (mounted && _controller.value.isPlaying) {
+          _hideUI();
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _uiTimer?.cancel();
     _controller.dispose();
     _codeController.dispose();
     super.dispose();
@@ -172,173 +206,220 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               child: CircularProgressIndicator(color: Colors.red),
             );
           }
-          return Stack(
-            children: [
-              // Vidéo
-              Center(
-                child: AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                ),
-              ),
-              // Titre et croix
-              Positioned(
-                top: 12,
-                left: 12,
-                right: 12,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(width: 48),
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          '“Has This Ever Happened To You?”',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w400,
+          return GestureDetector(
+            onTap: () {
+              if (_controller.value.isPlaying) {
+                if (_showUI) {
+                  // Si l'UI est déjà visible, la faire disparaître immédiatement
+                  _hideUI();
+                  _uiTimer?.cancel();
+                } else {
+                  // Si l'UI n'est pas visible, l'afficher
+                  _showAndAutoHideUI();
+                }
+              }
+            },
+            child: Container(
+              color: Colors.black,
+              child: Stack(
+                children: [
+                  // Vidéo
+                  Center(
+                    child: AspectRatio(
+                      aspectRatio: _controller.value.aspectRatio,
+                      child: VideoPlayer(_controller),
+                    ),
+                  ),
+                  // Titre et croix
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    right: 12,
+                    child: AnimatedOpacity(
+                      opacity: (_showUI || !_controller.value.isPlaying)
+                          ? 1.0
+                          : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 48),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                '"Has This Ever Happened To You?"',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            onPressed: () => Navigator.of(context).maybePop(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Contrôles centraux
+                  AnimatedOpacity(
+                    opacity: (_showUI || !_controller.value.isPlaying)
+                        ? 1.0
+                        : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            _controller.value.isPlaying
+                                ? Icons.pause
+                                : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 64,
+                          ),
+                          iconSize: 64,
+                          onPressed: () {
+                            setState(() {
+                              if (_isLocked) return;
+
+                              if (_controller.value.isPlaying) {
+                                _controller.pause();
+                                _showUIWithShortTimer();
+                              } else {
+                                _controller.play();
+                                _showUIWithShortTimer();
+                              }
+                            });
+                          },
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                      onPressed: () => Navigator.of(context).maybePop(),
-                    ),
-                  ],
-                ),
-              ),
-              // Contrôles centraux
-              Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      _controller.value.isPlaying
-                          ? Icons.pause
-                          : Icons.play_arrow,
-                      color: Colors.white,
-                      size: 64,
-                    ),
-                    iconSize: 64,
-                    onPressed: () {
-                      setState(() {
-                        if (_isLocked) return;
-
-                        if (_controller.value.isPlaying) {
-                          _controller.pause();
-                        } else {
-                          _controller.play();
-                        }
-                      });
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 16,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 16,
+                    child: AnimatedOpacity(
+                      opacity: (_showUI || !_controller.value.isPlaying)
+                          ? 1.0
+                          : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Column(
                         children: [
-                          // Curseur rouge
-                          Expanded(
-                            child: SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: Colors.red,
-                                inactiveTrackColor: Colors.white24,
-                                thumbColor: Colors.red,
-                                overlayColor: Colors.red.withValues(alpha: 0.2),
-                                trackHeight: 3,
-                                thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 10,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: [
+                                // Curseur rouge
+                                Expanded(
+                                  child: SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      activeTrackColor: Colors.red,
+                                      inactiveTrackColor: Colors.white24,
+                                      thumbColor: Colors.red,
+                                      overlayColor: Colors.red.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      trackHeight: 3,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 10,
+                                      ),
+                                    ),
+                                    child: Slider(
+                                      value: _controller.value.isInitialized
+                                          ? _controller
+                                                .value
+                                                .position
+                                                .inMilliseconds
+                                                .toDouble()
+                                          : 0.0,
+                                      min: 0.0,
+                                      max: _controller.value.isInitialized
+                                          ? _controller
+                                                .value
+                                                .duration
+                                                .inMilliseconds
+                                                .toDouble()
+                                          : 1.0,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _isDragging = true;
+                                        });
+                                      },
+                                      onChangeEnd: (value) {
+                                        _controller.seekTo(
+                                          Duration(milliseconds: value.toInt()),
+                                        );
+                                        setState(() {
+                                          _isDragging = false;
+                                        });
+                                      },
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: Slider(
-                                value: _controller.value.isInitialized
-                                    ? _controller.value.position.inMilliseconds
-                                          .toDouble()
-                                    : 0.0,
-                                min: 0.0,
-                                max: _controller.value.isInitialized
-                                    ? _controller.value.duration.inMilliseconds
-                                          .toDouble()
-                                    : 1.0,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _isDragging = true;
-                                  });
-                                },
-                                onChangeEnd: (value) {
-                                  _controller.seekTo(
-                                    Duration(milliseconds: value.toInt()),
-                                  );
-                                  setState(() {
-                                    _isDragging = false;
-                                  });
-                                },
-                              ),
+                                const SizedBox(width: 12),
+                                // Temps total
+                                Text(
+                                  _controller.value.isInitialized
+                                      ? _formatDuration(
+                                          _controller.value.duration,
+                                        )
+                                      : '0:00',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          // Temps total
-                          Text(
-                            _controller.value.isInitialized
-                                ? _formatDuration(_controller.value.duration)
-                                : '0:00',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _netflixAction(
+                                  _isLocked ? Icons.lock : Icons.lock_open,
+                                  _isLocked ? 'Vérouiller' : 'Dévérouiller',
+                                  () {
+                                    if (_isLocked) {
+                                      _showUnlockModal();
+                                    } else {
+                                      setState(() {
+                                        _isLocked = true;
+                                      });
+                                    }
+                                  },
+                                ),
+                                _netflixAction(Icons.skip_next, 'Suivant', () {
+                                  if (_isLocked) return;
+                                }),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _netflixAction(
-                            _isLocked ? Icons.lock : Icons.lock_open,
-                            _isLocked ? 'Vérouiller' : 'Dévérouiller',
-                            () {
-                              if (_isLocked) {
-                                _showUnlockModal();
-                              } else {
-                                setState(() {
-                                  _isLocked = true;
-                                });
-                              }
-                            },
-                          ),
-                          _netflixAction(Icons.skip_next, 'Suivant', () {
-                            if (_isLocked) return;
-                          }),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
