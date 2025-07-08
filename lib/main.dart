@@ -2535,7 +2535,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
                   final name = episode['name'] as String? ?? 'Épisode ${episodeIndex + 1}';
                   final url = episode['url'] as String? ?? '';
                   final isOnline = episode['isOnline'] as bool? ?? true;
-                  final isDownloaded = episode['isDownloaded'] as bool? ?? false;
+                  final isDownloaded = _downloadedEpisodes.contains(episodeIndex);
                   final isDownloading = _downloadingEpisodes.contains(episodeIndex);
                   
                   // Générer la miniature si elle n'existe pas encore
