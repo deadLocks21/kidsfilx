@@ -146,6 +146,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 textAlign: TextAlign.center,
+                autofocus: true,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 24,
