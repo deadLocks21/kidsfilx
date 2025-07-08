@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,6 +41,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Masquer la barre de statut et la barre de navigation
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    
     _controller = VideoPlayerController.networkUrl(
       Uri.parse('https://timothe.hofmann.fr/tchoupi.mp4'),
     );
@@ -105,6 +109,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
+    // Restaurer l'affichage de la barre de statut et de navigation
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, 
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
+    
     _timer?.cancel();
     _uiTimer?.cancel();
     _controller.dispose();
