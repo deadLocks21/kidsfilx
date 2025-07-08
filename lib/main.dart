@@ -447,10 +447,47 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             color: Colors.grey[800],
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
-                            Icons.video_file,
-                            color: Colors.white70,
-                            size: 24,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: FutureBuilder<String?>(
+                              future: _getThumbnailForEpisode(episode),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(
+                                    child: SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                
+                                if (snapshot.hasData && snapshot.data != null) {
+                                  return Image.file(
+                                    File(snapshot.data!),
+                                    width: 60,
+                                    height: 45,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Icon(
+                                        Icons.video_file,
+                                        color: Colors.white70,
+                                        size: 24,
+                                      );
+                                    },
+                                  );
+                                }
+                                
+                                return const Icon(
+                                  Icons.video_file,
+                                  color: Colors.white70,
+                                  size: 24,
+                                );
+                              },
+                            ),
                           ),
                         ),
                         title: Text(
@@ -513,6 +550,79 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _currentSource = episode['source'];
       _currentEpisode = episode['episode'];
     });
+  }
+
+  Future<String?> _getThumbnailForEpisode(Map<String, dynamic> episode) async {
+    try {
+      final sourceName = episode['sourceName'] as String;
+      final episodeName = episode['episodeName'] as String;
+      final url = episode['url'] as String;
+      
+      // Chercher dans les miniatures sauvegardées
+      final prefs = await SharedPreferences.getInstance();
+      final thumbnailsJson = prefs.getString('thumbnails_$sourceName');
+      
+      if (thumbnailsJson != null) {
+        final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
+        final thumbnails = thumbnailsMap.map((key, value) => MapEntry(int.parse(key), value as String));
+        
+        // Chercher la miniature correspondante par nom d'épisode
+        for (final entry in thumbnails.entries) {
+          final thumbnailPath = entry.value;
+          final file = File(thumbnailPath);
+          if (await file.exists()) {
+            // Vérifier si le nom du fichier contient le nom de l'épisode
+            if (thumbnailPath.contains(episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_'))) {
+              return thumbnailPath;
+            }
+          }
+        }
+      }
+      
+      // Si pas de miniature trouvée, essayer de la générer depuis le fichier local
+      if (url.isNotEmpty) {
+        final directory = await getApplicationDocumentsDirectory();
+        final thumbnailPath = '${directory.path}/thumbnails';
+        final thumbnailDir = Directory(thumbnailPath);
+        if (!await thumbnailDir.exists()) {
+          await thumbnailDir.create(recursive: true);
+        }
+
+        final safeName = episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+        final thumbnailFileName = 'thumbnail_${sourceName}_$safeName.jpg';
+        final thumbnailFilePath = '$thumbnailPath/$thumbnailFileName';
+
+        // Vérifier si la miniature existe déjà
+        final existingThumbnail = File(thumbnailFilePath);
+        if (await existingThumbnail.exists()) {
+          return thumbnailFilePath;
+        }
+
+        // Générer la nouvelle miniature
+        final thumbnail = await VideoThumbnail.thumbnailFile(
+          video: url,
+          thumbnailPath: thumbnailPath,
+          imageFormat: ImageFormat.JPEG,
+          quality: 75,
+          maxWidth: 200,
+          maxHeight: 150,
+          timeMs: 1000,
+        );
+
+        if (thumbnail != null) {
+          // Renommer le fichier généré avec un nom plus descriptif
+          final generatedFile = File(thumbnail);
+          if (await generatedFile.exists()) {
+            await generatedFile.rename(thumbnailFilePath);
+            return thumbnailFilePath;
+          }
+        }
+      }
+    } catch (e) {
+      print('Erreur lors de la récupération de la miniature: $e');
+    }
+    
+    return null;
   }
 
   double _getTopPadding(BuildContext context) {
@@ -1373,7 +1483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
               ListTile(
                 leading: const Icon(Icons.add, color: Colors.white),
                 title: const Text(
@@ -1713,10 +1823,10 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   List<Map<String, dynamic>> _episodes = [];
   bool _isLoading = true;
   bool _isDownloadingAll = false;
-  Set<int> _downloadingEpisodes = {};
+  final Set<int> _downloadingEpisodes = {};
   Set<int> _downloadedEpisodes = {};
   Map<int, String> _thumbnails = {};
-  Map<int, bool> _generatingThumbnails = {};
+  final Map<int, bool> _generatingThumbnails = {};
   Map<int, String> _downloadedFiles = {};
   final Dio _dio = Dio();
 
@@ -1843,8 +1953,6 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         await thumbnailDir.create(recursive: true);
       }
 
-      final thumbnailFile = '$thumbnailPath/thumbnail_${widget.source['name']}_$index.jpg';
-      
       final thumbnail = await VideoThumbnail.thumbnailFile(
         video: url,
         thumbnailPath: thumbnailPath,
@@ -1924,6 +2032,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         onReceiveProgress: (received, total) {
           if (total != -1) {
             final progress = (received / total * 100).round();
+            print('Progression: $progress%');
             // Ici on pourrait afficher la progression si nécessaire
           }
         },
