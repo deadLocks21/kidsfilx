@@ -770,7 +770,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       child: VideoPlayer(_controller),
                     ),
                   ),
-                  // Titre et bouton paramètres avec padding adaptatif
+                  // Titre avec padding adaptatif
                   Positioned(
                     top: _getTopPadding(context),
                     left: 0,
@@ -799,66 +799,37 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           top: 8,
                           bottom: 16,
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const SizedBox(width: 48), // Espace pour équilibrer
-                            Expanded(
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _currentEpisode != null
-                                          ? _currentEpisode!['name'] ??
-                                                'Épisode'
-                                          : 'Aucun épisode sélectionné',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (_currentSource != null)
-                                      Text(
-                                        _currentSource!['name'] ?? 'Source',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                  ],
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _currentEpisode != null
+                                    ? _currentEpisode!['name'] ??
+                                          'Épisode'
+                                    : 'Aucun épisode sélectionné',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
                                 ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.video_library,
-                                    color: Colors.white,
-                                    size: 28,
+                              if (_currentSource != null)
+                                Text(
+                                  _currentSource!['name'] ?? 'Source',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
                                   ),
-                                  onPressed: _selectEpisode,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.settings,
-                                    color: Colors.white,
-                                    size: 32,
-                                  ),
-                                  onPressed: _openSettings,
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1031,6 +1002,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
                                   _netflixAction(
+                                    Icons.video_library,
+                                    'Épisodes',
+                                    () {
+                                      if (_isLocked) return;
+                                      _selectEpisode();
+                                    },
+                                  ),
+                                  _netflixAction(
+                                    Icons.settings,
+                                    'Paramètres',
+                                    () {
+                                      if (_isLocked) return;
+                                      _openSettings();
+                                    },
+                                  ),
+                                  _netflixAction(
                                     _isLocked ? Icons.lock : Icons.lock_open,
                                     _isLocked ? 'Vérouiller' : 'Dévérouiller',
                                     () {
@@ -1070,7 +1057,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _netflixAction(IconData icon, String label, VoidCallback action) {
     return SizedBox(
-      width: 96,
+      width: 92,
       child: GestureDetector(
         onTap: action,
         child: Column(
