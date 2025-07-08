@@ -53,12 +53,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.initState();
     // Masquer la barre de statut et la barre de navigation
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-    
+
     // Initialiser avec un contrôleur vide
     _controller = VideoPlayerController.networkUrl(
       Uri.parse('https://timothe.hofmann.fr/tchoupi.mp4'),
     );
-    _initializeVideoPlayerFuture = Future.value(); // Pas d'initialisation automatique
+    _initializeVideoPlayerFuture =
+        Future.value(); // Pas d'initialisation automatique
     _controller.setLooping(true);
     _startTimer();
     _loadUnlockCode();
@@ -98,34 +99,41 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Future<void> _loadDownloadedEpisodes() async {
     final List<Map<String, dynamic>> allDownloaded = [];
-    
+
     for (final source in _sources) {
       final prefs = await SharedPreferences.getInstance();
-      final downloadedJson = prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+      final downloadedJson =
+          prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
       final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
-      
+
       // Charger les fichiers téléchargés
       final filesJson = prefs.getString('downloaded_files_${source['name']}');
       Map<int, String> downloadedFiles = {};
       if (filesJson != null) {
         final Map<String, dynamic> filesMap = jsonDecode(filesJson);
-        downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+        downloadedFiles = filesMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
       }
-      
+
       // Charger les métadonnées sauvegardées
-      final metadataJson = prefs.getString('episodes_metadata_${source['name']}');
+      final metadataJson = prefs.getString(
+        'episodes_metadata_${source['name']}',
+      );
       Map<int, Map<String, dynamic>> episodesMetadata = {};
       if (metadataJson != null) {
         final Map<String, dynamic> metadataMap = jsonDecode(metadataJson);
-        episodesMetadata = metadataMap.map((key, value) => 
-          MapEntry(int.parse(key), Map<String, dynamic>.from(value as Map)));
+        episodesMetadata = metadataMap.map(
+          (key, value) =>
+              MapEntry(int.parse(key), Map<String, dynamic>.from(value as Map)),
+        );
       }
-      
+
       if (downloadedIndices.isNotEmpty) {
         for (final index in downloadedIndices) {
           final localFile = downloadedFiles[index];
           final episodeMetadata = episodesMetadata[index];
-          
+
           // Vérifier que le fichier local existe
           if (localFile != null && episodeMetadata != null) {
             final file = File(localFile);
@@ -143,11 +151,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         }
       }
     }
-    
+
     setState(() {
       _downloadedEpisodes = allDownloaded;
     });
-    
+
     // Nettoyer les épisodes orphelins (sans fichier)
     await _cleanupOrphanedEpisodes();
   }
@@ -155,19 +163,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _cleanupOrphanedEpisodes() async {
     for (final source in _sources) {
       final prefs = await SharedPreferences.getInstance();
-      final downloadedJson = prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+      final downloadedJson =
+          prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
       final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
-      
+
       final filesJson = prefs.getString('downloaded_files_${source['name']}');
       Map<int, String> downloadedFiles = {};
       if (filesJson != null) {
         final Map<String, dynamic> filesMap = jsonDecode(filesJson);
-        downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+        downloadedFiles = filesMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
       }
-      
+
       final Set<int> validIndices = {};
       final Map<int, String> validFiles = {};
-      
+
       for (final index in downloadedIndices) {
         final localFile = downloadedFiles[index];
         if (localFile != null) {
@@ -178,14 +189,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           }
         }
       }
-      
+
       // Mettre à jour les listes avec seulement les fichiers valides
       if (validIndices.length != downloadedIndices.length) {
         final validIndicesList = validIndices.map((e) => e.toString()).toList();
-        await prefs.setStringList('downloaded_episodes_${source['name']}', validIndicesList);
-        
-        final validFilesJson = jsonEncode(validFiles.map((key, value) => MapEntry(key.toString(), value)));
-        await prefs.setString('downloaded_files_${source['name']}', validFilesJson);
+        await prefs.setStringList(
+          'downloaded_episodes_${source['name']}',
+          validIndicesList,
+        );
+
+        final validFilesJson = jsonEncode(
+          validFiles.map((key, value) => MapEntry(key.toString(), value)),
+        );
+        await prefs.setString(
+          'downloaded_files_${source['name']}',
+          validFilesJson,
+        );
       }
     }
   }
@@ -232,9 +251,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     // Restaurer l'affichage de la barre de statut et de navigation
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, 
-      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]);
-    
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+
     _timer?.cancel();
     _uiTimer?.cancel();
     _controller.dispose();
@@ -346,20 +367,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (_isLocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Déverrouillez d\'abord le lecteur pour accéder aux paramètres'),
+          content: Text(
+            'Déverrouillez d\'abord le lecteur pour accéder aux paramètres',
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
       );
       return;
     }
-    
+
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsScreen(onCodeChanged: _saveUnlockCode),
       ),
     );
-    
+
     // Recharger les épisodes téléchargés après être revenu des paramètres
     await _loadDownloadedEpisodes();
   }
@@ -368,7 +391,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (_downloadedEpisodes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Aucun épisode téléchargé trouvé (${_downloadedEpisodes.length}). Allez dans les paramètres pour télécharger des vidéos.'),
+          content: Text(
+            'Aucun épisode téléchargé trouvé (${_downloadedEpisodes.length}). Allez dans les paramètres pour télécharger des vidéos.',
+          ),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 3),
         ),
@@ -425,13 +450,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   itemCount: _downloadedEpisodes.length,
                   itemBuilder: (context, index) {
                     final episode = _downloadedEpisodes[index];
-                    final isSelected = _currentEpisode != null &&
+                    final isSelected =
+                        _currentEpisode != null &&
                         _currentEpisode!['url'] == episode['url'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.red.withValues(alpha: 0.2) : Colors.grey[900],
+                        color: isSelected
+                            ? Colors.red.withValues(alpha: 0.2)
+                            : Colors.grey[900],
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected ? Colors.red : Colors.transparent,
@@ -452,19 +480,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             child: FutureBuilder<String?>(
                               future: _getThumbnailForEpisode(episode),
                               builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
                                   return const Center(
                                     child: SizedBox(
                                       width: 16,
                                       height: 16,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     ),
                                   );
                                 }
-                                
+
                                 if (snapshot.hasData && snapshot.data != null) {
                                   return Image.file(
                                     File(snapshot.data!),
@@ -480,7 +512,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     },
                                   );
                                 }
-                                
+
                                 return const Icon(
                                   Icons.video_file,
                                   color: Colors.white70,
@@ -533,23 +565,61 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _playEpisode(Map<String, dynamic> episode) {
     _controller.dispose();
-    
+
     final url = episode['url'] as String;
     final isLocalFile = episode['localFile'] == true;
-    
+
     if (isLocalFile) {
       _controller = VideoPlayerController.file(File(url));
     } else {
       _controller = VideoPlayerController.networkUrl(Uri.parse(url));
     }
-    
+
     _initializeVideoPlayerFuture = _controller.initialize();
     _controller.setLooping(true);
-    
+
     setState(() {
       _currentSource = episode['source'];
       _currentEpisode = episode['episode'];
     });
+  }
+
+  void _playNextEpisode() {
+    if (_downloadedEpisodes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucun épisode téléchargé disponible'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Trouver l'index de l'épisode actuel
+    int currentIndex = -1;
+    for (int i = 0; i < _downloadedEpisodes.length; i++) {
+      final episode = _downloadedEpisodes[i];
+      if (_currentEpisode != null &&
+          episode['episodeName'] == _currentEpisode!['name'] &&
+          episode['sourceName'] == _currentSource?['name']) {
+        currentIndex = i;
+        break;
+      }
+    }
+
+    // Passer à l'épisode suivant
+    int nextIndex;
+    if (currentIndex == -1 || currentIndex == _downloadedEpisodes.length - 1) {
+      // Si pas d'épisode actuel ou dernier épisode, commencer par le premier
+      nextIndex = 0;
+    } else {
+      // Sinon, passer au suivant
+      nextIndex = currentIndex + 1;
+    }
+
+    final nextEpisode = _downloadedEpisodes[nextIndex];
+    _playEpisode(nextEpisode);
   }
 
   Future<String?> _getThumbnailForEpisode(Map<String, dynamic> episode) async {
@@ -557,28 +627,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final sourceName = episode['sourceName'] as String;
       final episodeName = episode['episodeName'] as String;
       final url = episode['url'] as String;
-      
+
       // Chercher dans les miniatures sauvegardées
       final prefs = await SharedPreferences.getInstance();
       final thumbnailsJson = prefs.getString('thumbnails_$sourceName');
-      
+
       if (thumbnailsJson != null) {
         final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
-        final thumbnails = thumbnailsMap.map((key, value) => MapEntry(int.parse(key), value as String));
-        
+        final thumbnails = thumbnailsMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
+
         // Chercher la miniature correspondante par nom d'épisode
         for (final entry in thumbnails.entries) {
           final thumbnailPath = entry.value;
           final file = File(thumbnailPath);
           if (await file.exists()) {
             // Vérifier si le nom du fichier contient le nom de l'épisode
-            if (thumbnailPath.contains(episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_'))) {
+            if (thumbnailPath.contains(
+              episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_'),
+            )) {
               return thumbnailPath;
             }
           }
         }
       }
-      
+
       // Si pas de miniature trouvée, essayer de la générer depuis le fichier local
       if (url.isNotEmpty) {
         final directory = await getApplicationDocumentsDirectory();
@@ -621,14 +695,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     } catch (e) {
       print('Erreur lors de la récupération de la miniature: $e');
     }
-    
+
     return null;
   }
 
   double _getTopPadding(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final orientation = mediaQuery.orientation;
-    
+
     // En mode paysage, on utilise un padding plus petit
     if (orientation == Orientation.landscape) {
       // En paysage, on peut utiliser un padding plus minimal
@@ -682,7 +756,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     left: 16,
                     right: 16,
                     child: AnimatedOpacity(
-                      opacity: (_showUI || !_controller.value.isPlaying) ? 1.0 : 0.0,
+                      opacity: (_showUI || !_controller.value.isPlaying)
+                          ? 1.0
+                          : 0.0,
                       duration: const Duration(milliseconds: 200),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -902,6 +978,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 ),
                                 _netflixAction(Icons.skip_next, 'Suivant', () {
                                   if (_isLocked) return;
+                                  _playNextEpisode();
                                 }),
                               ],
                             ),
@@ -943,7 +1020,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
 class SettingsScreen extends StatefulWidget {
   final Function(String) onCodeChanged;
-  
+
   const SettingsScreen({super.key, required this.onCodeChanged});
 
   @override
@@ -968,8 +1045,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _urlCheckTimer?.cancel();
     super.dispose();
   }
-
-
 
   void _onUrlChanged(String url, Function setDialogState) {
     _urlCheckTimer?.cancel();
@@ -1011,28 +1086,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(url),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
-        
+
         // Vérifier si c'est du JSON
-        if (contentType.contains('application/json') || 
+        if (contentType.contains('application/json') ||
             response.body.trim().startsWith('{')) {
-          
           try {
             final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-            
+
             // Vérifier la structure attendue
-            if (jsonData.containsKey('name') && 
-                jsonData.containsKey('data') && 
+            if (jsonData.containsKey('name') &&
+                jsonData.containsKey('data') &&
                 jsonData['data'] is List) {
-              
               final dataList = jsonData['data'] as List;
               if (dataList.isNotEmpty) {
                 // Vérifier que chaque élément de data a name et url
@@ -1048,19 +1123,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     break;
                   }
                 }
-                
+
                 if (isValidFormat) {
                   if (setDialogState != null) {
                     setDialogState(() {
                       _isCheckingUrl = false;
                       _isUrlValid = true;
-                      _urlCheckMessage = 'Source valide - ${dataList.length} épisode(s) détecté(s)';
+                      _urlCheckMessage =
+                          'Source valide - ${dataList.length} épisode(s) détecté(s)';
                     });
                   } else {
                     setState(() {
                       _isCheckingUrl = false;
                       _isUrlValid = true;
-                      _urlCheckMessage = 'Source valide - ${dataList.length} épisode(s) détecté(s)';
+                      _urlCheckMessage =
+                          'Source valide - ${dataList.length} épisode(s) détecté(s)';
                     });
                   }
                 } else {
@@ -1068,13 +1145,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setDialogState(() {
                       _isCheckingUrl = false;
                       _isUrlValid = false;
-                      _urlCheckMessage = 'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
+                      _urlCheckMessage =
+                          'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
                     });
                   } else {
                     setState(() {
                       _isCheckingUrl = false;
                       _isUrlValid = false;
-                      _urlCheckMessage = 'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
+                      _urlCheckMessage =
+                          'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
                     });
                   }
                 }
@@ -1098,13 +1177,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setDialogState(() {
                   _isCheckingUrl = false;
                   _isUrlValid = false;
-                  _urlCheckMessage = 'Format JSON invalide - Champs "name" et "data" requis';
+                  _urlCheckMessage =
+                      'Format JSON invalide - Champs "name" et "data" requis';
                 });
               } else {
                 setState(() {
                   _isCheckingUrl = false;
                   _isUrlValid = false;
-                  _urlCheckMessage = 'Format JSON invalide - Champs "name" et "data" requis';
+                  _urlCheckMessage =
+                      'Format JSON invalide - Champs "name" et "data" requis';
                 });
               }
             }
@@ -1192,7 +1273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _addSource() {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController urlController = TextEditingController();
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1255,7 +1336,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.red, width: 2),
+                        borderSide: const BorderSide(
+                          color: Colors.red,
+                          width: 2,
+                        ),
                       ),
                       filled: true,
                       fillColor: Colors.grey[900],
@@ -1301,15 +1385,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               ),
                             )
                           : _isUrlValid
-                              ? const Icon(Icons.check_circle, color: Colors.green)
-                              : urlController.text.isNotEmpty
-                                  ? const Icon(Icons.error, color: Colors.red)
-                                  : null,
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : urlController.text.isNotEmpty
+                          ? const Icon(Icons.error, color: Colors.red)
+                          : null,
                     ),
                     onChanged: (value) {
                       _onUrlChanged(value, setDialogState);
@@ -1319,12 +1405,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (_urlCheckMessage.isNotEmpty)
                     Container(
                       margin: const EdgeInsets.only(top: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: _isUrlValid ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                        color: _isUrlValid
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _isUrlValid ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
+                          color: _isUrlValid
+                              ? Colors.green.withValues(alpha: 0.3)
+                              : Colors.red.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
@@ -1374,18 +1467,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: (nameController.text.isNotEmpty && 
-                                     urlController.text.isNotEmpty && 
-                                     _isUrlValid) ? () {
-                            setState(() {
-                              _sources.add({
-                                'name': nameController.text,
-                                'url': urlController.text,
-                              });
-                            });
-                            _saveSources();
-                            Navigator.of(context).pop();
-                          } : null,
+                          onPressed:
+                              (nameController.text.isNotEmpty &&
+                                  urlController.text.isNotEmpty &&
+                                  _isUrlValid)
+                              ? () {
+                                  setState(() {
+                                    _sources.add({
+                                      'name': nameController.text,
+                                      'url': urlController.text,
+                                    });
+                                  });
+                                  _saveSources();
+                                  Navigator.of(context).pop();
+                                }
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             shape: RoundedRectangleBorder(
@@ -1428,10 +1524,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Paramètres',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('Paramètres', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
@@ -1440,84 +1533,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSection(
-            'Sources',
-            [
-              ..._sources.asMap().entries.map((entry) {
-                final index = entry.key;
-                final source = entry.value;
-                return ListTile(
-                  leading: const Icon(
-                    Icons.link,
-                    color: Colors.white,
-                  ),
-                  title: Text(
-                    source['name'] ?? 'Source ${index + 1}',
-                    style: const TextStyle(color: Colors.white),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    source['url'] ?? '',
-                    style: const TextStyle(color: Colors.white70),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.video_library, color: Colors.white),
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => VideoSelectionScreen(source: source),
-                            ),
-                          );
-                        },
+          _buildSection('Sources', [
+            ..._sources.asMap().entries.map((entry) {
+              final index = entry.key;
+              final source = entry.value;
+              return ListTile(
+                leading: const Icon(Icons.link, color: Colors.white),
+                title: Text(
+                  source['name'] ?? 'Source ${index + 1}',
+                  style: const TextStyle(color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  source['url'] ?? '',
+                  style: const TextStyle(color: Colors.white70),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.video_library,
+                        color: Colors.white,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _removeSource(index),
-                      ),
-                    ],
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                VideoSelectionScreen(source: source),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _removeSource(index),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            ListTile(
+              leading: const Icon(Icons.add, color: Colors.white),
+              title: const Text(
+                'Ajouter une source',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Scanner une URL pour les épisodes',
+                style: TextStyle(color: Colors.white70),
+              ),
+              onTap: _addSource,
+            ),
+          ]),
+          const SizedBox(height: 24),
+          _buildSection('Sécurité', [
+            _buildActionTile(
+              'Changer le code de verrouillage',
+              'Modifier le code à 4 chiffres',
+              () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ChangeCodeScreen(onCodeChanged: widget.onCodeChanged),
                   ),
                 );
-              }),
-              ListTile(
-                leading: const Icon(Icons.add, color: Colors.white),
-                title: const Text(
-                  'Ajouter une source',
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: const Text(
-                  'Scanner une URL pour les épisodes',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                onTap: _addSource,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSection(
-            'Sécurité',
-            [
-              _buildActionTile(
-                'Changer le code de verrouillage',
-                'Modifier le code à 4 chiffres',
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => ChangeCodeScreen(
-                        onCodeChanged: widget.onCodeChanged,
-                      ),
-                    ),
-                  );
-                },
-                Icons.lock,
-              ),
-            ],
-          ),
+              },
+              Icons.lock,
+            ),
+          ]),
         ],
       ),
     );
@@ -1547,8 +1634,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-
-
   Widget _buildActionTile(
     String title,
     String subtitle,
@@ -1557,14 +1642,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     return ListTile(
       leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(color: Colors.white70),
-      ),
+      title: Text(title, style: const TextStyle(color: Colors.white)),
+      subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70)),
       trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70),
       onTap: onTap,
     );
@@ -1573,7 +1652,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class ChangeCodeScreen extends StatefulWidget {
   final Function(String) onCodeChanged;
-  
+
   const ChangeCodeScreen({super.key, required this.onCodeChanged});
 
   @override
@@ -1621,10 +1700,13 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
     }
 
     // Vérifier que le nouveau code fait 4 chiffres
-    if (_newCodeController.text.length != 4 || !RegExp(r'^\d{4}$').hasMatch(_newCodeController.text)) {
+    if (_newCodeController.text.length != 4 ||
+        !RegExp(r'^\d{4}$').hasMatch(_newCodeController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Le nouveau code doit contenir exactement 4 chiffres !'),
+          content: Text(
+            'Le nouveau code doit contenir exactement 4 chiffres !',
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -1646,10 +1728,10 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
 
     // Sauvegarder le nouveau code
     widget.onCodeChanged(_newCodeController.text);
-    
+
     // Fermer l'écran
     Navigator.of(context).pop();
-    
+
     // Afficher un message de succès
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -1785,18 +1867,11 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
               ),
               child: const Column(
                 children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Colors.white70,
-                    size: 24,
-                  ),
+                  Icon(Icons.info_outline, color: Colors.white70, size: 24),
                   SizedBox(height: 8),
                   Text(
                     'Le code doit contenir exactement 4 chiffres',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -1812,7 +1887,7 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
 
 class VideoSelectionScreen extends StatefulWidget {
   final Map<String, dynamic> source;
-  
+
   const VideoSelectionScreen({super.key, required this.source});
 
   @override
@@ -1841,24 +1916,26 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
 
   Future<void> _loadEpisodes() async {
     try {
-      final response = await http.get(
-        Uri.parse(widget.source['url']),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(widget.source['url']),
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
         final dataList = jsonData['data'] as List;
-        
+
         setState(() {
           _episodes = dataList.map((item) {
             return Map<String, dynamic>.from(item as Map);
           }).toList();
           _isLoading = false;
         });
-        
+
         // Générer les miniatures pour les premiers épisodes
         for (int i = 0; i < _episodes.length && i < 5; i++) {
           _generateThumbnail(i);
@@ -1879,7 +1956,9 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
 
   Future<void> _loadDownloadedEpisodes() async {
     final prefs = await SharedPreferences.getInstance();
-    final downloadedJson = prefs.getStringList('downloaded_episodes_${widget.source['name']}') ?? [];
+    final downloadedJson =
+        prefs.getStringList('downloaded_episodes_${widget.source['name']}') ??
+        [];
     setState(() {
       _downloadedEpisodes = downloadedJson.map((e) => int.parse(e)).toSet();
     });
@@ -1887,9 +1966,14 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
 
   Future<void> _saveDownloadedEpisodes() async {
     final prefs = await SharedPreferences.getInstance();
-    final downloadedJson = _downloadedEpisodes.map((e) => e.toString()).toList();
-    await prefs.setStringList('downloaded_episodes_${widget.source['name']}', downloadedJson);
-    
+    final downloadedJson = _downloadedEpisodes
+        .map((e) => e.toString())
+        .toList();
+    await prefs.setStringList(
+      'downloaded_episodes_${widget.source['name']}',
+      downloadedJson,
+    );
+
     // Sauvegarder aussi les métadonnées des épisodes téléchargés
     final Map<String, dynamic> episodesMetadata = {};
     for (final index in _downloadedEpisodes) {
@@ -1898,45 +1982,67 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       }
     }
     final metadataJson = jsonEncode(episodesMetadata);
-    await prefs.setString('episodes_metadata_${widget.source['name']}', metadataJson);
+    await prefs.setString(
+      'episodes_metadata_${widget.source['name']}',
+      metadataJson,
+    );
   }
 
   Future<void> _loadThumbnails() async {
     final prefs = await SharedPreferences.getInstance();
-    final thumbnailsJson = prefs.getString('thumbnails_${widget.source['name']}');
+    final thumbnailsJson = prefs.getString(
+      'thumbnails_${widget.source['name']}',
+    );
     if (thumbnailsJson != null) {
       final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
       setState(() {
-        _thumbnails = thumbnailsMap.map((key, value) => MapEntry(int.parse(key), value as String));
+        _thumbnails = thumbnailsMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
       });
     }
   }
 
   Future<void> _saveThumbnails() async {
     final prefs = await SharedPreferences.getInstance();
-    final thumbnailsJson = jsonEncode(_thumbnails.map((key, value) => MapEntry(key.toString(), value)));
-    await prefs.setString('thumbnails_${widget.source['name']}', thumbnailsJson);
+    final thumbnailsJson = jsonEncode(
+      _thumbnails.map((key, value) => MapEntry(key.toString(), value)),
+    );
+    await prefs.setString(
+      'thumbnails_${widget.source['name']}',
+      thumbnailsJson,
+    );
   }
 
   Future<void> _loadDownloadedFiles() async {
     final prefs = await SharedPreferences.getInstance();
-    final filesJson = prefs.getString('downloaded_files_${widget.source['name']}');
+    final filesJson = prefs.getString(
+      'downloaded_files_${widget.source['name']}',
+    );
     if (filesJson != null) {
       final Map<String, dynamic> filesMap = jsonDecode(filesJson);
       setState(() {
-        _downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+        _downloadedFiles = filesMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
       });
     }
   }
 
   Future<void> _saveDownloadedFiles() async {
     final prefs = await SharedPreferences.getInstance();
-    final filesJson = jsonEncode(_downloadedFiles.map((key, value) => MapEntry(key.toString(), value)));
-    await prefs.setString('downloaded_files_${widget.source['name']}', filesJson);
+    final filesJson = jsonEncode(
+      _downloadedFiles.map((key, value) => MapEntry(key.toString(), value)),
+    );
+    await prefs.setString(
+      'downloaded_files_${widget.source['name']}',
+      filesJson,
+    );
   }
 
   Future<void> _generateThumbnail(int index) async {
-    if (_generatingThumbnails[index] == true || _thumbnails.containsKey(index)) return;
+    if (_generatingThumbnails[index] == true || _thumbnails.containsKey(index))
+      return;
 
     setState(() {
       _generatingThumbnails[index] = true;
@@ -1945,7 +2051,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     try {
       final episode = _episodes[index];
       final url = episode['url'] as String;
-      
+
       final directory = await getApplicationDocumentsDirectory();
       final thumbnailPath = '${directory.path}/thumbnails';
       final thumbnailDir = Directory(thumbnailPath);
@@ -2022,7 +2128,8 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       }
 
       // Nom du fichier local
-      final fileName = '${widget.source['name']}_${index}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.mp4';
+      final fileName =
+          '${widget.source['name']}_${index}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.mp4';
       final filePath = '$downloadPath/$fileName';
 
       // Télécharger le fichier
@@ -2077,11 +2184,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
           await Future.delayed(const Duration(milliseconds: 500));
         }
       }
-      
+
       setState(() {
         _isDownloadingAll = false;
       });
-      
+
       _showSuccess('Tous les épisodes ont été téléchargés !');
     } catch (e) {
       setState(() {
@@ -2105,7 +2212,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         _downloadedEpisodes.remove(index);
         _downloadedFiles.remove(index);
       });
-      
+
       await _saveDownloadedEpisodes();
       await _saveDownloadedFiles();
       _showSuccess('Épisode supprimé');
@@ -2140,175 +2247,181 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.red),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.red))
           : _episodes.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.video_library_outlined,
-                        color: Colors.grey[600],
-                        size: 64,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Aucun épisode trouvé',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 18,
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.video_library_outlined,
+                    color: Colors.grey[600],
+                    size: 64,
                   ),
-                )
-                             : ListView.builder(
-                   padding: const EdgeInsets.all(16),
-                   itemCount: _episodes.length,
-                   itemBuilder: (context, index) {
-                     // Générer la miniature si elle n'existe pas encore
-                     if (!_thumbnails.containsKey(index) && _generatingThumbnails[index] != true) {
-                       _generateThumbnail(index);
-                     }
-                    final episode = _episodes[index];
-                    final name = episode['name'] as String? ?? 'Épisode ${index + 1}';
-                    final url = episode['url'] as String? ?? '';
-                    final isDownloaded = _downloadedEpisodes.contains(index);
-                    final isDownloading = _downloadingEpisodes.contains(index);
+                  const SizedBox(height: 16),
+                  Text(
+                    'Aucun épisode trouvé',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 18),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _episodes.length,
+              itemBuilder: (context, index) {
+                // Générer la miniature si elle n'existe pas encore
+                if (!_thumbnails.containsKey(index) &&
+                    _generatingThumbnails[index] != true) {
+                  _generateThumbnail(index);
+                }
+                final episode = _episodes[index];
+                final name =
+                    episode['name'] as String? ?? 'Épisode ${index + 1}';
+                final url = episode['url'] as String? ?? '';
+                final isDownloaded = _downloadedEpisodes.contains(index);
+                final isDownloading = _downloadingEpisodes.contains(index);
 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDownloaded ? Colors.green : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      width: 80,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDownloaded ? Colors.green : Colors.transparent,
-                          width: 2,
-                        ),
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: ListTile(
-                        leading: Container(
-                          width: 80,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: _generatingThumbnails[index] == true
-                                ? const Center(
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _generatingThumbnails[index] == true
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
                                     ),
-                                  )
-                                : _thumbnails.containsKey(index)
-                                    ? Image.file(
-                                        File(_thumbnails[index]!),
-                                        width: 80,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Icon(
-                                            isDownloaded ? Icons.check_circle : Icons.video_file,
-                                            color: isDownloaded ? Colors.green : Colors.white70,
-                                            size: 32,
-                                          );
-                                        },
-                                      )
-                                    : Icon(
-                                        isDownloaded ? Icons.check_circle : Icons.video_file,
-                                        color: isDownloaded ? Colors.green : Colors.white70,
-                                        size: 32,
-                                      ),
+                                  ),
+                                ),
+                              )
+                            : _thumbnails.containsKey(index)
+                            ? Image.file(
+                                File(_thumbnails[index]!),
+                                width: 80,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    isDownloaded
+                                        ? Icons.check_circle
+                                        : Icons.video_file,
+                                    color: isDownloaded
+                                        ? Colors.green
+                                        : Colors.white70,
+                                    size: 32,
+                                  );
+                                },
+                              )
+                            : Icon(
+                                isDownloaded
+                                    ? Icons.check_circle
+                                    : Icons.video_file,
+                                color: isDownloaded
+                                    ? Colors.green
+                                    : Colors.white70,
+                                size: 32,
+                              ),
+                      ),
+                    ),
+                    title: Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            url,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                                                 title: Text(
-                           name,
-                           style: const TextStyle(
-                             color: Colors.white,
-                             fontSize: 16,
-                             fontWeight: FontWeight.w500,
-                           ),
-                           maxLines: 1,
-                           overflow: TextOverflow.ellipsis,
-                         ),
-                                                 subtitle: Row(
-                           children: [
-                             Expanded(
-                               child: Text(
-                                 url,
-                                 style: const TextStyle(
-                                   color: Colors.white70,
-                                   fontSize: 12,
-                                 ),
-                                 maxLines: 1,
-                                 overflow: TextOverflow.ellipsis,
-                               ),
-                             ),
-                             if (isDownloaded)
-                               Container(
-                                 margin: const EdgeInsets.only(left: 8),
-                                 padding: const EdgeInsets.symmetric(
-                                   horizontal: 6,
-                                   vertical: 2,
-                                 ),
-                                 decoration: BoxDecoration(
-                                   color: Colors.green.withValues(alpha: 0.2),
-                                   borderRadius: BorderRadius.circular(8),
-                                 ),
-                                 child: const Text(
-                                   '✓',
-                                   style: TextStyle(
-                                     color: Colors.green,
-                                     fontSize: 10,
-                                     fontWeight: FontWeight.bold,
-                                   ),
-                                 ),
-                               ),
-                           ],
-                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isDownloading)
-                              const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                ),
-                              )
-                            else if (isDownloaded)
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deleteEpisode(index),
-                              )
-                            else
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.download,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () => _downloadEpisode(index),
+                        if (isDownloaded)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              '✓',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
                               ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isDownloading)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.red,
+                              ),
+                            ),
+                          )
+                        else if (isDownloaded)
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteEpisode(index),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(
+                              Icons.download,
+                              color: Colors.white,
+                            ),
+                            onPressed: () => _downloadEpisode(index),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
