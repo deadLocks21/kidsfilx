@@ -202,44 +202,25 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
+  double _getTopPadding(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final orientation = mediaQuery.orientation;
+    
+    // En mode paysage, on utilise un padding plus petit
+    if (orientation == Orientation.landscape) {
+      // En paysage, on peut utiliser un padding plus minimal
+      return 16;
+    } else {
+      // En mode portrait, on utilise le padding standard
+      return mediaQuery.padding.top;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: AnimatedOpacity(
-          opacity: (_showUI || !_controller.value.isPlaying) ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            automaticallyImplyLeading: false,
-            title: const Text(
-              '"Has This Ever Happened To You?"',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w400,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            centerTitle: true,
-            actions: [
-              IconButton(
-                icon: const Icon(
-                  Icons.settings,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                onPressed: _openSettings,
-              ),
-            ],
-          ),
-        ),
-      ),
+
       body: FutureBuilder(
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
@@ -270,6 +251,45 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     child: AspectRatio(
                       aspectRatio: _controller.value.aspectRatio,
                       child: VideoPlayer(_controller),
+                    ),
+                  ),
+                  // Titre et bouton paramètres avec padding adaptatif
+                  Positioned(
+                    top: _getTopPadding(context),
+                    left: 16,
+                    right: 16,
+                    child: AnimatedOpacity(
+                      opacity: (_showUI || !_controller.value.isPlaying) ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const SizedBox(width: 48), // Espace pour équilibrer
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                '"Has This Ever Happened To You?"',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.settings,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                            onPressed: _openSettings,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   // Contrôles centraux
