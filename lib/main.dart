@@ -436,7 +436,22 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SettingsScreen(onCodeChanged: _saveUnlockCode),
+        builder: (context) => SettingsScreen(
+          onCodeChanged: _saveUnlockCode,
+          onShuffleChanged: (bool value) async {
+            setState(() {
+              _shuffleEpisodes = value;
+            });
+            if (value) {
+              if (_downloadedEpisodes.isNotEmpty) {
+                _downloadedEpisodes.shuffle();
+                setState(() {});
+              }
+            } else {
+              await _loadDownloadedEpisodes();
+            }
+          },
+        ),
       ),
     );
 
@@ -1117,8 +1132,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
 class SettingsScreen extends StatefulWidget {
   final Function(String) onCodeChanged;
+  final Function(bool) onShuffleChanged;
 
-  const SettingsScreen({super.key, required this.onCodeChanged});
+  const SettingsScreen({super.key, required this.onCodeChanged, required this.onShuffleChanged});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -1406,6 +1422,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _shuffleEpisodes = value;
     });
+    widget.onShuffleChanged(value);
   }
 
   Future<void> _saveSources() async {
