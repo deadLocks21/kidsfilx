@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() => runApp(const VideoPlayerApp());
 
@@ -1044,9 +1047,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _removeSource(index),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.video_library, color: Colors.white),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => VideoSelectionScreen(source: source),
+                            ),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeSource(index),
+                      ),
+                    ],
                   ),
                 );
               }).toList(),
@@ -1372,6 +1390,435 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class VideoSelectionScreen extends StatefulWidget {
+  final Map<String, dynamic> source;
+  
+  const VideoSelectionScreen({super.key, required this.source});
+
+  @override
+  State<VideoSelectionScreen> createState() => _VideoSelectionScreenState();
+}
+
+class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
+  List<Map<String, dynamic>> _episodes = [];
+  bool _isLoading = true;
+  bool _isDownloadingAll = false;
+  Set<int> _downloadingEpisodes = {};
+  Set<int> _downloadedEpisodes = {};
+  Map<int, String> _thumbnails = {};
+  Map<int, bool> _generatingThumbnails = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEpisodes();
+    _loadDownloadedEpisodes();
+    _loadThumbnails();
+  }
+
+  Future<void> _loadEpisodes() async {
+    try {
+      final response = await http.get(
+        Uri.parse(widget.source['url']),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+        final dataList = jsonData['data'] as List;
+        
+        setState(() {
+          _episodes = dataList.map((item) {
+            return Map<String, dynamic>.from(item as Map);
+          }).toList();
+          _isLoading = false;
+        });
+        
+        // Générer les miniatures pour les premiers épisodes
+        for (int i = 0; i < _episodes.length && i < 5; i++) {
+          _generateThumbnail(i);
+        }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        _showError('Erreur lors du chargement des épisodes');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showError('Impossible de charger les épisodes');
+    }
+  }
+
+  Future<void> _loadDownloadedEpisodes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final downloadedJson = prefs.getStringList('downloaded_episodes_${widget.source['name']}') ?? [];
+    setState(() {
+      _downloadedEpisodes = downloadedJson.map((e) => int.parse(e)).toSet();
+    });
+  }
+
+  Future<void> _saveDownloadedEpisodes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final downloadedJson = _downloadedEpisodes.map((e) => e.toString()).toList();
+    await prefs.setStringList('downloaded_episodes_${widget.source['name']}', downloadedJson);
+  }
+
+  Future<void> _loadThumbnails() async {
+    final prefs = await SharedPreferences.getInstance();
+    final thumbnailsJson = prefs.getString('thumbnails_${widget.source['name']}');
+    if (thumbnailsJson != null) {
+      final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
+      setState(() {
+        _thumbnails = thumbnailsMap.map((key, value) => MapEntry(int.parse(key), value as String));
+      });
+    }
+  }
+
+  Future<void> _saveThumbnails() async {
+    final prefs = await SharedPreferences.getInstance();
+    final thumbnailsJson = jsonEncode(_thumbnails.map((key, value) => MapEntry(key.toString(), value)));
+    await prefs.setString('thumbnails_${widget.source['name']}', thumbnailsJson);
+  }
+
+  Future<void> _generateThumbnail(int index) async {
+    if (_generatingThumbnails[index] == true || _thumbnails.containsKey(index)) return;
+
+    setState(() {
+      _generatingThumbnails[index] = true;
+    });
+
+    try {
+      final episode = _episodes[index];
+      final url = episode['url'] as String;
+      
+      final directory = await getApplicationDocumentsDirectory();
+      final thumbnailPath = '${directory.path}/thumbnails';
+      final thumbnailDir = Directory(thumbnailPath);
+      if (!await thumbnailDir.exists()) {
+        await thumbnailDir.create(recursive: true);
+      }
+
+      final thumbnailFile = '$thumbnailPath/thumbnail_${widget.source['name']}_$index.jpg';
+      
+      final thumbnail = await VideoThumbnail.thumbnailFile(
+        video: url,
+        thumbnailPath: thumbnailPath,
+        imageFormat: ImageFormat.JPEG,
+        quality: 75,
+        maxWidth: 200,
+        maxHeight: 150,
+        timeMs: 1000, // Prendre la miniature à 1 seconde
+      );
+
+      if (thumbnail != null) {
+        setState(() {
+          _thumbnails[index] = thumbnail;
+          _generatingThumbnails[index] = false;
+        });
+        await _saveThumbnails();
+      } else {
+        setState(() {
+          _generatingThumbnails[index] = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _generatingThumbnails[index] = false;
+      });
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _downloadEpisode(int index) async {
+    if (_downloadingEpisodes.contains(index)) return;
+
+    setState(() {
+      _downloadingEpisodes.add(index);
+    });
+
+    try {
+      final episode = _episodes[index];
+      final url = episode['url'] as String;
+      final name = episode['name'] as String;
+
+      // Simuler le téléchargement (dans une vraie app, on utiliserait un vrai téléchargement)
+      await Future.delayed(const Duration(seconds: 2));
+
+      setState(() {
+        _downloadedEpisodes.add(index);
+        _downloadingEpisodes.remove(index);
+      });
+
+      await _saveDownloadedEpisodes();
+      _showSuccess('Épisode "$name" téléchargé !');
+    } catch (e) {
+      setState(() {
+        _downloadingEpisodes.remove(index);
+      });
+      _showError('Erreur lors du téléchargement');
+    }
+  }
+
+  Future<void> _downloadAllEpisodes() async {
+    if (_isDownloadingAll) return;
+
+    setState(() {
+      _isDownloadingAll = true;
+    });
+
+    try {
+      for (int i = 0; i < _episodes.length; i++) {
+        if (!_downloadedEpisodes.contains(i)) {
+          await _downloadEpisode(i);
+          // Petit délai entre les téléchargements
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+      
+      setState(() {
+        _isDownloadingAll = false;
+      });
+      
+      _showSuccess('Tous les épisodes ont été téléchargés !');
+    } catch (e) {
+      setState(() {
+        _isDownloadingAll = false;
+      });
+      _showError('Erreur lors du téléchargement de tous les épisodes');
+    }
+  }
+
+  void _deleteEpisode(int index) {
+    setState(() {
+      _downloadedEpisodes.remove(index);
+    });
+    _saveDownloadedEpisodes();
+    _showSuccess('Épisode supprimé');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.grey[900],
+        title: Text(
+          widget.source['name'] ?? 'Sélection vidéos',
+          style: const TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          if (!_isLoading && _episodes.isNotEmpty)
+            IconButton(
+              icon: Icon(
+                _isDownloadingAll ? Icons.stop : Icons.download,
+                color: Colors.white,
+              ),
+              onPressed: _isDownloadingAll ? null : _downloadAllEpisodes,
+            ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.red),
+            )
+          : _episodes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.video_library_outlined,
+                        color: Colors.grey[600],
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Aucun épisode trouvé',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                             : ListView.builder(
+                   padding: const EdgeInsets.all(16),
+                   itemCount: _episodes.length,
+                   itemBuilder: (context, index) {
+                     // Générer la miniature si elle n'existe pas encore
+                     if (!_thumbnails.containsKey(index) && _generatingThumbnails[index] != true) {
+                       _generateThumbnail(index);
+                     }
+                    final episode = _episodes[index];
+                    final name = episode['name'] as String? ?? 'Épisode ${index + 1}';
+                    final url = episode['url'] as String? ?? '';
+                    final isDownloaded = _downloadedEpisodes.contains(index);
+                    final isDownloading = _downloadingEpisodes.contains(index);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDownloaded ? Colors.green : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          width: 80,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: _generatingThumbnails[index] == true
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                : _thumbnails.containsKey(index)
+                                    ? Image.file(
+                                        File(_thumbnails[index]!),
+                                        width: 80,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return Icon(
+                                            isDownloaded ? Icons.check_circle : Icons.video_file,
+                                            color: isDownloaded ? Colors.green : Colors.white70,
+                                            size: 32,
+                                          );
+                                        },
+                                      )
+                                    : Icon(
+                                        isDownloaded ? Icons.check_circle : Icons.video_file,
+                                        color: isDownloaded ? Colors.green : Colors.white70,
+                                        size: 32,
+                                      ),
+                          ),
+                        ),
+                                                 title: Text(
+                           name,
+                           style: const TextStyle(
+                             color: Colors.white,
+                             fontSize: 16,
+                             fontWeight: FontWeight.w500,
+                           ),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
+                         ),
+                                                 subtitle: Row(
+                           children: [
+                             Expanded(
+                               child: Text(
+                                 url,
+                                 style: const TextStyle(
+                                   color: Colors.white70,
+                                   fontSize: 12,
+                                 ),
+                                 maxLines: 1,
+                                 overflow: TextOverflow.ellipsis,
+                               ),
+                             ),
+                             if (isDownloaded)
+                               Container(
+                                 margin: const EdgeInsets.only(left: 8),
+                                 padding: const EdgeInsets.symmetric(
+                                   horizontal: 6,
+                                   vertical: 2,
+                                 ),
+                                 decoration: BoxDecoration(
+                                   color: Colors.green.withValues(alpha: 0.2),
+                                   borderRadius: BorderRadius.circular(8),
+                                 ),
+                                 child: const Text(
+                                   '✓',
+                                   style: TextStyle(
+                                     color: Colors.green,
+                                     fontSize: 10,
+                                     fontWeight: FontWeight.bold,
+                                   ),
+                                 ),
+                               ),
+                           ],
+                         ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isDownloading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                ),
+                              )
+                            else if (isDownloaded)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () => _deleteEpisode(index),
+                              )
+                            else
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.download,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () => _downloadEpisode(index),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }
