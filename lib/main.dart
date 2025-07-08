@@ -1523,11 +1523,170 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _removeSource(int index) {
+  Future<void> _removeSource(int index) async {
+    final source = _sources[index];
+    final sourceName = source['name'] as String?;
+    
+    if (sourceName != null) {
+      // Supprimer tous les fichiers téléchargés pour cette source
+      await _deleteAllEpisodesForSource(sourceName);
+      
+      // Supprimer toutes les données associées à cette source
+      await _deleteSourceData(sourceName);
+    }
+    
     setState(() {
       _sources.removeAt(index);
     });
     _saveSources();
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Source "$sourceName" et tous ses épisodes supprimés'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteAllEpisodesForSource(String sourceName) async {
+    try {
+      // Récupérer la liste des fichiers téléchargés pour cette source
+      final prefs = await SharedPreferences.getInstance();
+      final filesJson = prefs.getString('downloaded_files_$sourceName');
+      
+      if (filesJson != null) {
+        final Map<String, dynamic> filesMap = jsonDecode(filesJson);
+        final downloadedFiles = filesMap.map(
+          (key, value) => MapEntry(int.parse(key), value as String),
+        );
+        
+        // Supprimer chaque fichier
+        for (final filePath in downloadedFiles.values) {
+          final file = File(filePath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        }
+        
+        // Supprimer les miniatures
+        final thumbnailsJson = prefs.getString('thumbnails_$sourceName');
+        if (thumbnailsJson != null) {
+          final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
+          final thumbnails = thumbnailsMap.map(
+            (key, value) => MapEntry(int.parse(key), value as String),
+          );
+          
+          for (final thumbnailPath in thumbnails.values) {
+            final thumbnailFile = File(thumbnailPath);
+            if (await thumbnailFile.exists()) {
+              await thumbnailFile.delete();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Erreur lors de la suppression des fichiers: $e');
+    }
+  }
+
+  Future<void> _deleteSourceData(String sourceName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Supprimer toutes les données associées à cette source
+      await prefs.remove('downloaded_episodes_$sourceName');
+      await prefs.remove('downloaded_files_$sourceName');
+      await prefs.remove('episodes_metadata_$sourceName');
+      await prefs.remove('thumbnails_$sourceName');
+    } catch (e) {
+      print('Erreur lors de la suppression des données: $e');
+    }
+  }
+
+  void _showDeleteConfirmation(int index) {
+    final source = _sources[index];
+    final sourceName = source['name'] as String? ?? 'Source ${index + 1}';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Confirmer la suppression',
+            style: TextStyle(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Êtes-vous sûr de vouloir supprimer cette source ?',
+                style: TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Source: $sourceName',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.red.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cette action supprimera également tous les épisodes téléchargés pour cette source. Cette opération est irréversible.',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _removeSource(index);
+              },
+              child: const Text(
+                'Supprimer',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -1582,7 +1741,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _removeSource(index),
+                      onPressed: () => _showDeleteConfirmation(index),
                     ),
                   ],
                 ),
