@@ -850,7 +850,7 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -977,6 +977,7 @@ class _ChangeCodeScreenState extends State<ChangeCodeScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24), // Espace supplémentaire en bas
           ],
         ),
       ),
