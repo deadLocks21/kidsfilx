@@ -31,6 +31,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Timer? _timer;
   bool _isDragging = false;
   bool _isLocked = false;
+  final TextEditingController _codeController = TextEditingController();
+  static const String _unlockCode = "1234";
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void dispose() {
     _timer?.cancel();
     _controller.dispose();
+    _codeController.dispose();
     super.dispose();
   }
 
@@ -63,6 +66,98 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
     return '$minutes:$seconds';
+  }
+
+  void _showUnlockModal() {
+    _codeController.clear();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Code de déverrouillage',
+            style: TextStyle(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Entrez le code à 4 chiffres',
+                style: TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _codeController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  counterText: "",
+                  border: OutlineInputBorder(),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white54),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.red),
+                  ),
+                ),
+                onSubmitted: (value) => _validateCode(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: _validateCode,
+              child: const Text(
+                'Déverrouiller',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _validateCode() {
+    if (_codeController.text == _unlockCode) {
+      setState(() {
+        _isLocked = false;
+      });
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lecteur déverrouillé !'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Code incorrect !'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      _codeController.clear();
+    }
   }
 
   @override
@@ -225,9 +320,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             _isLocked ? Icons.lock : Icons.lock_open,
                             _isLocked ? 'Vérouiller' : 'Dévérouiller',
                             () {
-                              setState(() {
-                                _isLocked = !_isLocked;
-                              });
+                              if (_isLocked) {
+                                _showUnlockModal();
+                              } else {
+                                setState(() {
+                                  _isLocked = true;
+                                });
+                              }
                             },
                           ),
                           _netflixAction(Icons.skip_next, 'Suivant', () {
