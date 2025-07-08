@@ -324,6 +324,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Row(
                               children: [
+                                // Temps actuel
+                                Text(
+                                  _controller.value.isInitialized
+                                      ? _formatDuration(
+                                          _controller.value.position,
+                                        )
+                                      : '0:00',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
                                 // Curseur rouge
                                 Expanded(
                                   child: SliderTheme(
