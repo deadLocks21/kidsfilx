@@ -858,8 +858,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             children: [
                               Text(
                                 _currentEpisode != null
-                                    ? _currentEpisode!['name'] ??
-                                          'Épisode'
+                                    ? _currentEpisode!['name'] ?? 'Épisode'
                                     : 'Aucun épisode sélectionné',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -1134,7 +1133,11 @@ class SettingsScreen extends StatefulWidget {
   final Function(String) onCodeChanged;
   final Function(bool) onShuffleChanged;
 
-  const SettingsScreen({super.key, required this.onCodeChanged, required this.onShuffleChanged});
+  const SettingsScreen({
+    super.key,
+    required this.onCodeChanged,
+    required this.onShuffleChanged,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -1888,7 +1891,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ]),
           const SizedBox(height: 24),
+          _buildSection('Sécurité', [
+            _buildActionTile(
+              'Changer le code de verrouillage',
+              'Modifier le code à 4 chiffres',
+              () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ChangeCodeScreen(onCodeChanged: widget.onCodeChanged),
+                  ),
+                );
+              },
+              Icons.lock,
+            ),
+          ]),
+          const SizedBox(height: 24),
           _buildSection('Sources', [
+            ListTile(
+              leading: const Icon(Icons.add, color: Colors.white),
+              title: const Text(
+                'Ajouter une source',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Scanner une URL JSON pour les épisodes',
+                style: TextStyle(color: Colors.white70),
+              ),
+              onTap: _addSource,
+            ),
             ..._sources.asMap().entries.map((entry) {
               final index = entry.key;
               final source = entry.value;
@@ -1931,34 +1962,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
             }),
-            ListTile(
-              leading: const Icon(Icons.add, color: Colors.white),
-              title: const Text(
-                'Ajouter une source',
-                style: TextStyle(color: Colors.white),
-              ),
-              subtitle: const Text(
-                'Scanner une URL JSON pour les épisodes',
-                style: TextStyle(color: Colors.white70),
-              ),
-              onTap: _addSource,
-            ),
-          ]),
-          const SizedBox(height: 24),
-          _buildSection('Sécurité', [
-            _buildActionTile(
-              'Changer le code de verrouillage',
-              'Modifier le code à 4 chiffres',
-              () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ChangeCodeScreen(onCodeChanged: widget.onCodeChanged),
-                  ),
-                );
-              },
-              Icons.lock,
-            ),
           ]),
         ],
       ),
