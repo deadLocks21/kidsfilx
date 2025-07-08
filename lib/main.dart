@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:dio/dio.dart';
 
 void main() => runApp(const VideoPlayerApp());
 
@@ -42,6 +43,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _showUI = true;
   final TextEditingController _codeController = TextEditingController();
   String _unlockCode = "1234";
+  List<Map<String, dynamic>> _sources = [];
+  Map<String, dynamic>? _currentSource;
+  Map<String, dynamic>? _currentEpisode;
+  List<Map<String, dynamic>> _downloadedEpisodes = [];
 
   @override
   void initState() {
@@ -49,13 +54,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     // Masquer la barre de statut et la barre de navigation
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
     
+    // Initialiser avec un contrôleur vide
     _controller = VideoPlayerController.networkUrl(
       Uri.parse('https://timothe.hofmann.fr/tchoupi.mp4'),
     );
-    _initializeVideoPlayerFuture = _controller.initialize();
+    _initializeVideoPlayerFuture = Future.value(); // Pas d'initialisation automatique
     _controller.setLooping(true);
     _startTimer();
     _loadUnlockCode();
+    _loadSources();
+    _loadDownloadedEpisodes();
   }
 
   Future<void> _loadUnlockCode() async {
@@ -71,6 +79,115 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     setState(() {
       _unlockCode = code;
     });
+  }
+
+  Future<void> _loadSources() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sourcesJson = prefs.getStringList('video_sources') ?? [];
+    setState(() {
+      _sources = sourcesJson.map((json) {
+        final Map<String, dynamic> source = Map<String, dynamic>.from(
+          jsonDecode(json) as Map,
+        );
+        return source;
+      }).toList();
+    });
+    // Recharger les épisodes après avoir chargé les sources
+    await _loadDownloadedEpisodes();
+  }
+
+  Future<void> _loadDownloadedEpisodes() async {
+    final List<Map<String, dynamic>> allDownloaded = [];
+    
+    for (final source in _sources) {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadedJson = prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+      final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
+      
+      // Charger les fichiers téléchargés
+      final filesJson = prefs.getString('downloaded_files_${source['name']}');
+      Map<int, String> downloadedFiles = {};
+      if (filesJson != null) {
+        final Map<String, dynamic> filesMap = jsonDecode(filesJson);
+        downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+      }
+      
+      // Charger les métadonnées sauvegardées
+      final metadataJson = prefs.getString('episodes_metadata_${source['name']}');
+      Map<int, Map<String, dynamic>> episodesMetadata = {};
+      if (metadataJson != null) {
+        final Map<String, dynamic> metadataMap = jsonDecode(metadataJson);
+        episodesMetadata = metadataMap.map((key, value) => 
+          MapEntry(int.parse(key), Map<String, dynamic>.from(value as Map)));
+      }
+      
+      if (downloadedIndices.isNotEmpty) {
+        for (final index in downloadedIndices) {
+          final localFile = downloadedFiles[index];
+          final episodeMetadata = episodesMetadata[index];
+          
+          // Vérifier que le fichier local existe
+          if (localFile != null && episodeMetadata != null) {
+            final file = File(localFile);
+            if (await file.exists()) {
+              allDownloaded.add({
+                'source': source,
+                'episode': episodeMetadata,
+                'sourceName': source['name'],
+                'episodeName': episodeMetadata['name'] ?? 'Épisode $index',
+                'url': localFile, // Utiliser le fichier local
+                'localFile': true,
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    setState(() {
+      _downloadedEpisodes = allDownloaded;
+    });
+    
+    // Nettoyer les épisodes orphelins (sans fichier)
+    await _cleanupOrphanedEpisodes();
+  }
+
+  Future<void> _cleanupOrphanedEpisodes() async {
+    for (final source in _sources) {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadedJson = prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+      final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
+      
+      final filesJson = prefs.getString('downloaded_files_${source['name']}');
+      Map<int, String> downloadedFiles = {};
+      if (filesJson != null) {
+        final Map<String, dynamic> filesMap = jsonDecode(filesJson);
+        downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+      }
+      
+      final Set<int> validIndices = {};
+      final Map<int, String> validFiles = {};
+      
+      for (final index in downloadedIndices) {
+        final localFile = downloadedFiles[index];
+        if (localFile != null) {
+          final file = File(localFile);
+          if (await file.exists()) {
+            validIndices.add(index);
+            validFiles[index] = localFile;
+          }
+        }
+      }
+      
+      // Mettre à jour les listes avec seulement les fichiers valides
+      if (validIndices.length != downloadedIndices.length) {
+        final validIndicesList = validIndices.map((e) => e.toString()).toList();
+        await prefs.setStringList('downloaded_episodes_${source['name']}', validIndicesList);
+        
+        final validFilesJson = jsonEncode(validFiles.map((key, value) => MapEntry(key.toString(), value)));
+        await prefs.setString('downloaded_files_${source['name']}', validFilesJson);
+      }
+    }
   }
 
   void _startTimer() {
@@ -225,7 +342,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
-  void _openSettings() {
+  void _openSettings() async {
     if (_isLocked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -237,11 +354,165 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       return;
     }
     
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsScreen(onCodeChanged: _saveUnlockCode),
       ),
     );
+    
+    // Recharger les épisodes téléchargés après être revenu des paramètres
+    await _loadDownloadedEpisodes();
+  }
+
+  void _selectEpisode() {
+    if (_downloadedEpisodes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Aucun épisode téléchargé trouvé (${_downloadedEpisodes.length}). Allez dans les paramètres pour télécharger des vidéos.'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[600],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                margin: const EdgeInsets.only(bottom: 20),
+              ),
+              // Title
+              const Text(
+                'Sélectionner un épisode',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              // Episodes list
+              Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.6,
+                ),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _downloadedEpisodes.length,
+                  itemBuilder: (context, index) {
+                    final episode = _downloadedEpisodes[index];
+                    final isSelected = _currentEpisode != null &&
+                        _currentEpisode!['url'] == episode['url'];
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.red.withValues(alpha: 0.2) : Colors.grey[900],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? Colors.red : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: Container(
+                          width: 60,
+                          height: 45,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.video_file,
+                            color: Colors.white70,
+                            size: 24,
+                          ),
+                        ),
+                        title: Text(
+                          episode['episodeName'] ?? 'Épisode ${index + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          episode['sourceName'] ?? 'Source inconnue',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: Colors.red,
+                                size: 24,
+                              )
+                            : null,
+                        onTap: () {
+                          _playEpisode(episode);
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _playEpisode(Map<String, dynamic> episode) {
+    _controller.dispose();
+    
+    final url = episode['url'] as String;
+    final isLocalFile = episode['localFile'] == true;
+    
+    if (isLocalFile) {
+      _controller = VideoPlayerController.file(File(url));
+    } else {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    }
+    
+    _initializeVideoPlayerFuture = _controller.initialize();
+    _controller.setLooping(true);
+    
+    setState(() {
+      _currentSource = episode['source'];
+      _currentEpisode = episode['episode'];
+    });
   }
 
   double _getTopPadding(BuildContext context) {
@@ -309,26 +580,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           const SizedBox(width: 48), // Espace pour équilibrer
                           Expanded(
                             child: Center(
-                              child: Text(
-                                '"Has This Ever Happened To You?"',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _currentEpisode != null
+                                        ? _currentEpisode!['name'] ?? 'Épisode'
+                                        : 'Aucun épisode sélectionné',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (_currentSource != null)
+                                    Text(
+                                      _currentSource!['name'] ?? 'Source',
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.settings,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                            onPressed: _openSettings,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.video_library,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                                onPressed: _selectEpisode,
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.settings,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                                onPressed: _openSettings,
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -358,6 +660,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           onPressed: () {
                             setState(() {
                               if (_isLocked) return;
+                              if (_currentEpisode == null) {
+                                _selectEpisode();
+                                return;
+                              }
 
                               if (_controller.value.isPlaying) {
                                 _controller.pause();
@@ -1411,6 +1717,8 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   Set<int> _downloadedEpisodes = {};
   Map<int, String> _thumbnails = {};
   Map<int, bool> _generatingThumbnails = {};
+  Map<int, String> _downloadedFiles = {};
+  final Dio _dio = Dio();
 
   @override
   void initState() {
@@ -1418,6 +1726,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     _loadEpisodes();
     _loadDownloadedEpisodes();
     _loadThumbnails();
+    _loadDownloadedFiles();
   }
 
   Future<void> _loadEpisodes() async {
@@ -1470,6 +1779,16 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     final prefs = await SharedPreferences.getInstance();
     final downloadedJson = _downloadedEpisodes.map((e) => e.toString()).toList();
     await prefs.setStringList('downloaded_episodes_${widget.source['name']}', downloadedJson);
+    
+    // Sauvegarder aussi les métadonnées des épisodes téléchargés
+    final Map<String, dynamic> episodesMetadata = {};
+    for (final index in _downloadedEpisodes) {
+      if (index < _episodes.length) {
+        episodesMetadata[index.toString()] = _episodes[index];
+      }
+    }
+    final metadataJson = jsonEncode(episodesMetadata);
+    await prefs.setString('episodes_metadata_${widget.source['name']}', metadataJson);
   }
 
   Future<void> _loadThumbnails() async {
@@ -1487,6 +1806,23 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     final prefs = await SharedPreferences.getInstance();
     final thumbnailsJson = jsonEncode(_thumbnails.map((key, value) => MapEntry(key.toString(), value)));
     await prefs.setString('thumbnails_${widget.source['name']}', thumbnailsJson);
+  }
+
+  Future<void> _loadDownloadedFiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final filesJson = prefs.getString('downloaded_files_${widget.source['name']}');
+    if (filesJson != null) {
+      final Map<String, dynamic> filesMap = jsonDecode(filesJson);
+      setState(() {
+        _downloadedFiles = filesMap.map((key, value) => MapEntry(int.parse(key), value as String));
+      });
+    }
+  }
+
+  Future<void> _saveDownloadedFiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final filesJson = jsonEncode(_downloadedFiles.map((key, value) => MapEntry(key.toString(), value)));
+    await prefs.setString('downloaded_files_${widget.source['name']}', filesJson);
   }
 
   Future<void> _generateThumbnail(int index) async {
@@ -1569,21 +1905,51 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       final url = episode['url'] as String;
       final name = episode['name'] as String;
 
-      // Simuler le téléchargement (dans une vraie app, on utiliserait un vrai téléchargement)
-      await Future.delayed(const Duration(seconds: 2));
+      // Créer le dossier de téléchargement
+      final directory = await getApplicationDocumentsDirectory();
+      final downloadPath = '${directory.path}/videos';
+      final downloadDir = Directory(downloadPath);
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
 
-      setState(() {
-        _downloadedEpisodes.add(index);
-        _downloadingEpisodes.remove(index);
-      });
+      // Nom du fichier local
+      final fileName = '${widget.source['name']}_${index}_${name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.mp4';
+      final filePath = '$downloadPath/$fileName';
 
-      await _saveDownloadedEpisodes();
-      _showSuccess('Épisode "$name" téléchargé !');
+      // Télécharger le fichier
+      await _dio.download(
+        url,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = (received / total * 100).round();
+            // Ici on pourrait afficher la progression si nécessaire
+          }
+        },
+      );
+
+      // Vérifier que le fichier existe
+      final file = File(filePath);
+      if (await file.exists()) {
+        setState(() {
+          _downloadedEpisodes.add(index);
+          _downloadedFiles[index] = filePath;
+          _downloadingEpisodes.remove(index);
+        });
+
+        await _saveDownloadedEpisodes();
+        await _saveDownloadedFiles();
+
+        _showSuccess('Épisode "$name" téléchargé !');
+      } else {
+        throw Exception('Fichier non créé');
+      }
     } catch (e) {
       setState(() {
         _downloadingEpisodes.remove(index);
       });
-      _showError('Erreur lors du téléchargement');
+      _showError('Erreur lors du téléchargement: ${e.toString()}');
     }
   }
 
@@ -1616,12 +1982,27 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     }
   }
 
-  void _deleteEpisode(int index) {
-    setState(() {
-      _downloadedEpisodes.remove(index);
-    });
-    _saveDownloadedEpisodes();
-    _showSuccess('Épisode supprimé');
+  void _deleteEpisode(int index) async {
+    try {
+      // Supprimer le fichier local
+      if (_downloadedFiles.containsKey(index)) {
+        final file = File(_downloadedFiles[index]!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      setState(() {
+        _downloadedEpisodes.remove(index);
+        _downloadedFiles.remove(index);
+      });
+      
+      await _saveDownloadedEpisodes();
+      await _saveDownloadedFiles();
+      _showSuccess('Épisode supprimé');
+    } catch (e) {
+      _showError('Erreur lors de la suppression: ${e.toString()}');
+    }
   }
 
   @override
