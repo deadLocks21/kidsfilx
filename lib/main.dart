@@ -487,7 +487,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
                         leading: Container(
                           width: 60,
                           height: 45,
