@@ -2709,6 +2709,108 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     }
   }
 
+  void _showDeleteAllConfirmation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Supprimer tous les épisodes',
+            style: TextStyle(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Êtes-vous sûr de vouloir supprimer tous les épisodes téléchargés ?',
+                style: TextStyle(color: Colors.white70),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.red, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cette action supprimera définitivement tous les fichiers téléchargés. Cette opération est irréversible.',
+                        style: TextStyle(color: Colors.red, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Annuler',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteAllEpisodes();
+              },
+              child: const Text(
+                'Supprimer tout',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteAllEpisodes() async {
+    try {
+      // Supprimer tous les fichiers téléchargés
+      for (final entry in _downloadedFiles.entries) {
+        final file = File(entry.value);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      // Supprimer toutes les miniatures
+      for (final thumbnailPath in _thumbnails.values) {
+        final thumbnailFile = File(thumbnailPath);
+        if (await thumbnailFile.exists()) {
+          await thumbnailFile.delete();
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _downloadedEpisodes.clear();
+          _downloadedFiles.clear();
+          _thumbnails.clear();
+        });
+      }
+
+      await _saveDownloadedEpisodes();
+      await _saveDownloadedFiles();
+      await _saveThumbnails();
+
+      _showSuccess('Tous les épisodes ont été supprimés');
+    } catch (e) {
+      _showError('Erreur lors de la suppression: ${e.toString()}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2731,6 +2833,14 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
                 color: Colors.white,
               ),
               onPressed: _isDownloadingAll ? null : _downloadAllEpisodes,
+            ),
+          if (_downloadedEpisodes.isNotEmpty)
+            IconButton(
+              icon: const Icon(
+                Icons.delete_sweep,
+                color: Colors.red,
+              ),
+              onPressed: _showDeleteAllConfirmation,
             ),
         ],
       ),
