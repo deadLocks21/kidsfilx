@@ -2265,6 +2265,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   List<Map<String, dynamic>> _episodes = [];
   bool _isLoading = true;
   bool _isDownloadingAll = false;
+  bool _shouldStopDownload = false;
   final Set<int> _downloadingEpisodes = {};
   Set<int> _downloadedEpisodes = {};
   Map<int, String> _thumbnails = {};
@@ -2597,6 +2598,16 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     }
 
     try {
+      // Vérifier si l'arrêt a été demandé avant de commencer
+      if (_shouldStopDownload) {
+        if (mounted) {
+          setState(() {
+            _downloadingEpisodes.remove(index);
+          });
+        }
+        return;
+      }
+
       // Trouver l'épisode correspondant dans la liste combinée
       final episode = _episodes.firstWhere(
         (ep) => ep['index'] == index,
@@ -2624,6 +2635,22 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         filePath,
         onReceiveProgress: (received, total) {},
       );
+
+      // Vérifier si l'arrêt a été demandé après le téléchargement
+      if (_shouldStopDownload) {
+        // Supprimer le fichier partiellement téléchargé
+        final file = File(filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+        
+        if (mounted) {
+          setState(() {
+            _downloadingEpisodes.remove(index);
+          });
+        }
+        return;
+      }
 
       // Vérifier que le fichier existe
       final file = File(filePath);
@@ -2657,13 +2684,25 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     if (mounted) {
       setState(() {
         _isDownloadingAll = true;
+        _shouldStopDownload = false;
       });
     }
 
     try {
       for (int i = 0; i < _episodes.length; i++) {
+        // Vérifier si l'arrêt a été demandé
+        if (_shouldStopDownload) {
+          break;
+        }
+        
         if (!_downloadedEpisodes.contains(i)) {
           await _downloadEpisode(i);
+          
+          // Vérifier à nouveau si l'arrêt a été demandé après chaque téléchargement
+          if (_shouldStopDownload) {
+            break;
+          }
+          
           // Petit délai entre les téléchargements
           await Future.delayed(const Duration(milliseconds: 500));
         }
@@ -2672,12 +2711,14 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       if (mounted) {
         setState(() {
           _isDownloadingAll = false;
+          _shouldStopDownload = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isDownloadingAll = false;
+          _shouldStopDownload = false;
         });
       }
       _showError('Erreur lors du téléchargement de tous les épisodes');
@@ -2811,6 +2852,18 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     }
   }
 
+  void _stopAllDownloads() {
+    setState(() {
+      _shouldStopDownload = true;
+      _isDownloadingAll = false;
+    });
+    
+    // Arrêter tous les téléchargements individuels en cours
+    _downloadingEpisodes.clear();
+    
+    _showSuccess('Arrêt des téléchargements en cours...');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -2832,7 +2885,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
                 _isDownloadingAll ? Icons.stop : Icons.download,
                 color: Colors.white,
               ),
-              onPressed: _isDownloadingAll ? null : _downloadAllEpisodes,
+              onPressed: _isDownloadingAll ? _stopAllDownloads : _downloadAllEpisodes,
             ),
           if (_downloadedEpisodes.isNotEmpty)
             IconButton(
