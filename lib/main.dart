@@ -2264,14 +2264,17 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
           }
         }
 
-        setState(() {
-          _episodes = combinedEpisodes;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _episodes = combinedEpisodes;
+            _isLoading = false;
+          });
+        }
 
         // Générer les miniatures pour les premiers épisodes
         for (int i = 0; i < _episodes.length && i < 5; i++) {
-          _generateThumbnail(i);
+          // Utiliser Future.microtask pour éviter l'appel de setState pendant le build
+          Future.microtask(() => _generateThumbnail(i));
         }
       } else {
         // Si l'URL n'est plus accessible, charger seulement les épisodes téléchargés
@@ -2316,10 +2319,12 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       }
     }
 
-    setState(() {
-      _episodes = offlineEpisodes;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _episodes = offlineEpisodes;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadDownloadedEpisodes() async {
@@ -2327,9 +2332,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     final downloadedJson =
         prefs.getStringList('downloaded_episodes_${widget.source['name']}') ??
         [];
-    setState(() {
-      _downloadedEpisodes = downloadedJson.map((e) => int.parse(e)).toSet();
-    });
+    if (mounted) {
+      setState(() {
+        _downloadedEpisodes = downloadedJson.map((e) => int.parse(e)).toSet();
+      });
+    }
   }
 
   Future<void> _saveDownloadedEpisodes() async {
@@ -2363,11 +2370,13 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     );
     if (thumbnailsJson != null) {
       final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
-      setState(() {
-        _thumbnails = thumbnailsMap.map(
-          (key, value) => MapEntry(int.parse(key), value as String),
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _thumbnails = thumbnailsMap.map(
+            (key, value) => MapEntry(int.parse(key), value as String),
+          );
+        });
+      }
     }
   }
 
@@ -2389,11 +2398,13 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
     );
     if (filesJson != null) {
       final Map<String, dynamic> filesMap = jsonDecode(filesJson);
-      setState(() {
-        _downloadedFiles = filesMap.map(
-          (key, value) => MapEntry(int.parse(key), value as String),
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _downloadedFiles = filesMap.map(
+            (key, value) => MapEntry(int.parse(key), value as String),
+          );
+        });
+      }
     }
   }
 
@@ -2413,9 +2424,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         _thumbnails.containsKey(index)) {
       return;
     }
-    setState(() {
-      _generatingThumbnails[index] = true;
-    });
+    if (mounted) {
+      setState(() {
+        _generatingThumbnails[index] = true;
+      });
+    }
 
     try {
       final episode = _episodes[index];
@@ -2439,20 +2452,26 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       );
 
       if (thumbnail != null) {
-        setState(() {
-          _thumbnails[index] = thumbnail;
-          _generatingThumbnails[index] = false;
-        });
+        if (mounted) {
+          setState(() {
+            _thumbnails[index] = thumbnail;
+            _generatingThumbnails[index] = false;
+          });
+        }
         await _saveThumbnails();
       } else {
+        if (mounted) {
+          setState(() {
+            _generatingThumbnails[index] = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _generatingThumbnails[index] = false;
         });
       }
-    } catch (e) {
-      setState(() {
-        _generatingThumbnails[index] = false;
-      });
     }
   }
 
@@ -2479,9 +2498,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   Future<void> _downloadEpisode(int index) async {
     if (_downloadingEpisodes.contains(index)) return;
 
-    setState(() {
-      _downloadingEpisodes.add(index);
-    });
+    if (mounted) {
+      setState(() {
+        _downloadingEpisodes.add(index);
+      });
+    }
 
     try {
       // Trouver l'épisode correspondant dans la liste combinée
@@ -2521,11 +2542,13 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       // Vérifier que le fichier existe
       final file = File(filePath);
       if (await file.exists()) {
-        setState(() {
-          _downloadedEpisodes.add(index);
-          _downloadedFiles[index] = filePath;
-          _downloadingEpisodes.remove(index);
-        });
+        if (mounted) {
+          setState(() {
+            _downloadedEpisodes.add(index);
+            _downloadedFiles[index] = filePath;
+            _downloadingEpisodes.remove(index);
+          });
+        }
 
         await _saveDownloadedEpisodes();
         await _saveDownloadedFiles();
@@ -2535,9 +2558,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         throw Exception('Fichier non créé');
       }
     } catch (e) {
-      setState(() {
-        _downloadingEpisodes.remove(index);
-      });
+      if (mounted) {
+        setState(() {
+          _downloadingEpisodes.remove(index);
+        });
+      }
       _showError('Erreur lors du téléchargement: ${e.toString()}');
     }
   }
@@ -2545,9 +2570,11 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   Future<void> _downloadAllEpisodes() async {
     if (_isDownloadingAll) return;
 
-    setState(() {
-      _isDownloadingAll = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isDownloadingAll = true;
+      });
+    }
 
     try {
       for (int i = 0; i < _episodes.length; i++) {
@@ -2558,15 +2585,19 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         }
       }
 
-      setState(() {
-        _isDownloadingAll = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isDownloadingAll = false;
+        });
+      }
 
       _showSuccess('Tous les épisodes ont été téléchargés !');
     } catch (e) {
-      setState(() {
-        _isDownloadingAll = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isDownloadingAll = false;
+        });
+      }
       _showError('Erreur lors du téléchargement de tous les épisodes');
     }
   }
@@ -2581,10 +2612,12 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         }
       }
 
-      setState(() {
-        _downloadedEpisodes.remove(index);
-        _downloadedFiles.remove(index);
-      });
+      if (mounted) {
+        setState(() {
+          _downloadedEpisodes.remove(index);
+          _downloadedFiles.remove(index);
+        });
+      }
 
       await _saveDownloadedEpisodes();
       await _saveDownloadedFiles();
@@ -2657,7 +2690,8 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
                 // Générer la miniature si elle n'existe pas encore
                 if (!_thumbnails.containsKey(episodeIndex) &&
                     _generatingThumbnails[episodeIndex] != true) {
-                  _generateThumbnail(episodeIndex);
+                  // Utiliser Future.microtask pour éviter l'appel de setState pendant le build
+                  Future.microtask(() => _generateThumbnail(episodeIndex));
                 }
 
                 return Container(
