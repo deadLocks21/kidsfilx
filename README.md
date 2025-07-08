@@ -1,4 +1,4 @@
-# Lecteur Vidéo pour Enfants
+# Kidflix - Lecteur Vidéo pour Enfants
 
 Un lecteur vidéo simple et convivial développé avec Flutter, spécialement conçu pour les enfants.
 
