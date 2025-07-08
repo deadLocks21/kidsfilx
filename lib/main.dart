@@ -2041,9 +2041,10 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
   }
 
   Future<void> _generateThumbnail(int index) async {
-    if (_generatingThumbnails[index] == true || _thumbnails.containsKey(index))
+    if (_generatingThumbnails[index] == true ||
+        _thumbnails.containsKey(index)) {
       return;
-
+    }
     setState(() {
       _generatingThumbnails[index] = true;
     });
