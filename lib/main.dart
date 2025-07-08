@@ -472,7 +472,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     final episode = _downloadedEpisodes[index];
                     final isSelected =
                         _currentEpisode != null &&
-                        _currentEpisode!['url'] == episode['url'];
+                        _currentSource != null &&
+                        episode['episodeName'] == _currentEpisode!['name'] &&
+                        episode['sourceName'] == _currentSource!['name'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
