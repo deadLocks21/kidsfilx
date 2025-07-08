@@ -194,6 +194,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -222,11 +230,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             actions: [
               IconButton(
                 icon: const Icon(
-                  Icons.close,
+                  Icons.settings,
                   color: Colors.white,
                   size: 32,
                 ),
-                onPressed: () => Navigator.of(context).maybePop(),
+                onPressed: _openSettings,
               ),
             ],
           ),
@@ -451,6 +459,239 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _autoPlay = true;
+  bool _loopVideo = true;
+  bool _showSubtitles = false;
+  double _volume = 1.0;
+  String _selectedQuality = 'Auto';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Paramètres',
+          style: TextStyle(color: Colors.white),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSection(
+            'Lecture',
+            [
+              _buildSwitchTile(
+                'Lecture automatique',
+                'Démarrer la vidéo automatiquement',
+                _autoPlay,
+                (value) => setState(() => _autoPlay = value),
+                Icons.play_arrow,
+              ),
+              _buildSwitchTile(
+                'Lecture en boucle',
+                'Rejouer la vidéo automatiquement',
+                _loopVideo,
+                (value) => setState(() => _loopVideo = value),
+                Icons.repeat,
+              ),
+              _buildSwitchTile(
+                'Sous-titres',
+                'Afficher les sous-titres',
+                _showSubtitles,
+                (value) => setState(() => _showSubtitles = value),
+                Icons.subtitles,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildSection(
+            'Audio',
+            [
+              _buildSliderTile(
+                'Volume',
+                _volume,
+                (value) => setState(() => _volume = value),
+                Icons.volume_up,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildSection(
+            'Qualité',
+            [
+              _buildDropdownTile(
+                'Qualité vidéo',
+                _selectedQuality,
+                ['Auto', '1080p', '720p', '480p', '360p'],
+                (value) => setState(() => _selectedQuality = value!),
+                Icons.high_quality,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildSection(
+            'Sécurité',
+            [
+              _buildActionTile(
+                'Changer le code de verrouillage',
+                'Modifier le code à 4 chiffres',
+                () {
+                  // TODO: Implémenter le changement de code
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Fonctionnalité à venir'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                },
+                Icons.lock,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSwitchTile(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+    IconData icon,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: Colors.white70),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: Colors.red,
+      ),
+    );
+  }
+
+  Widget _buildSliderTile(
+    String title,
+    double value,
+    ValueChanged<double> onChanged,
+    IconData icon,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white),
+      ),
+      subtitle: Slider(
+        value: value,
+        onChanged: onChanged,
+        activeColor: Colors.red,
+        inactiveColor: Colors.white24,
+      ),
+      trailing: Text(
+        '${(value * 100).toInt()}%',
+        style: const TextStyle(color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildDropdownTile(
+    String title,
+    String value,
+    List<String> options,
+    ValueChanged<String?> onChanged,
+    IconData icon,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white),
+      ),
+      trailing: DropdownButton<String>(
+        value: value,
+        onChanged: onChanged,
+        dropdownColor: Colors.grey[900],
+        style: const TextStyle(color: Colors.white),
+        underline: Container(),
+        items: options.map((String option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(option),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildActionTile(
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+    IconData icon,
+  ) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: Colors.white70),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70),
+      onTap: onTap,
     );
   }
 }
