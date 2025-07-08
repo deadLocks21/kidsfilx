@@ -30,6 +30,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late Future<void> _initializeVideoPlayerFuture;
   Timer? _timer;
   bool _isDragging = false;
+  bool _isLocked = false;
 
   @override
   void initState() {
@@ -138,6 +139,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     iconSize: 64,
                     onPressed: () {
                       setState(() {
+                        if (_isLocked) return;
+
                         if (_controller.value.isPlaying) {
                           _controller.pause();
                         } else {
@@ -218,8 +221,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          _netflixAction(Icons.lock_open, 'Vérouiller'),
-                          _netflixAction(Icons.skip_next, 'Suivant'),
+                          _netflixAction(
+                            _isLocked ? Icons.lock : Icons.lock_open,
+                            _isLocked ? 'Vérouiller' : 'Dévérouiller',
+                            () {
+                              setState(() {
+                                _isLocked = !_isLocked;
+                              });
+                            },
+                          ),
+                          _netflixAction(Icons.skip_next, 'Suivant', () {
+                            if (_isLocked) return;
+                          }),
                         ],
                       ),
                     ),
@@ -233,14 +246,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  Widget _netflixAction(IconData icon, String label) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-      ],
+  Widget _netflixAction(IconData icon, String label, VoidCallback action) {
+    return SizedBox(
+      width: 128,
+      child: GestureDetector(
+        onTap: action,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
