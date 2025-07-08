@@ -212,6 +212,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _openSettings() {
+    if (_isLocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Déverrouillez d\'abord le lecteur pour accéder aux paramètres'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsScreen(onCodeChanged: _saveUnlockCode),
