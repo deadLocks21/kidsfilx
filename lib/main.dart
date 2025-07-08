@@ -47,6 +47,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Map<String, dynamic>? _currentSource;
   Map<String, dynamic>? _currentEpisode;
   List<Map<String, dynamic>> _downloadedEpisodes = [];
+  bool _autoLoadFirstEpisode = false;
 
   @override
   void initState() {
@@ -75,6 +76,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _loadUnlockCode();
     _loadSources();
     _loadDownloadedEpisodes();
+    _loadAutoLoadOption();
   }
 
   Future<void> _loadUnlockCode() async {
@@ -90,6 +92,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     setState(() {
       _unlockCode = code;
     });
+  }
+
+  Future<void> _loadAutoLoadOption() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _autoLoadFirstEpisode = prefs.getBool('auto_load_first_episode') ?? false;
+    });
+    // Si activé, tenter de charger le premier épisode téléchargé
+    if (_autoLoadFirstEpisode) {
+      await _loadDownloadedEpisodes();
+      if (_downloadedEpisodes.isNotEmpty) {
+        _playEpisode(_downloadedEpisodes.first);
+      }
+    }
   }
 
   Future<void> _loadSources() async {
@@ -1094,6 +1110,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isUrlValid = false;
   String _urlCheckMessage = '';
 
+  // Ajout : option Lecture
+  bool _autoLoadFirstEpisode = false;
+
   @override
   void initState() {
     super.initState();
@@ -1330,6 +1349,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
         return source;
       }).toList();
+    });
+  }
+
+  Future<void> _saveAutoLoadOption(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('auto_load_first_episode', value);
+    setState(() {
+      _autoLoadFirstEpisode = value;
     });
   }
 
@@ -1763,6 +1790,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildSection('Lecture', [
+            SwitchListTile(
+              value: _autoLoadFirstEpisode,
+              onChanged: (value) => _saveAutoLoadOption(value),
+              title: const Text(
+                'Charger automatiquement le premier épisode',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Lance le premier épisode téléchargé au démarrage',
+                style: TextStyle(color: Colors.white70),
+              ),
+              activeColor: Colors.red,
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white24,
+            ),
+          ]),
+          const SizedBox(height: 24),
           _buildSection('Sources', [
             ..._sources.asMap().entries.map((entry) {
               final index = entry.key;
