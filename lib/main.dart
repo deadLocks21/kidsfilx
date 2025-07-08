@@ -550,21 +550,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _checkUrl(String url) async {
+
+
+  void _onUrlChanged(String url, Function setDialogState) {
+    _urlCheckTimer?.cancel();
+    _urlCheckTimer = Timer(const Duration(milliseconds: 500), () {
+      _checkUrl(url, setDialogState);
+    });
+  }
+
+  Future<void> _checkUrl(String url, [Function? setDialogState]) async {
     if (url.isEmpty) {
-      setState(() {
-        _isCheckingUrl = false;
-        _isUrlValid = false;
-        _urlCheckMessage = '';
-      });
+      if (setDialogState != null) {
+        setDialogState(() {
+          _isCheckingUrl = false;
+          _isUrlValid = false;
+          _urlCheckMessage = '';
+        });
+      } else {
+        setState(() {
+          _isCheckingUrl = false;
+          _isUrlValid = false;
+          _urlCheckMessage = '';
+        });
+      }
       return;
     }
 
-    setState(() {
-      _isCheckingUrl = true;
-      _isUrlValid = false;
-      _urlCheckMessage = 'Vérification en cours...';
-    });
+    if (setDialogState != null) {
+      setDialogState(() {
+        _isCheckingUrl = true;
+        _isUrlValid = false;
+        _urlCheckMessage = 'Vérification en cours...';
+      });
+    } else {
+      setState(() {
+        _isCheckingUrl = true;
+        _isUrlValid = false;
+        _urlCheckMessage = 'Vérification en cours...';
+      });
+    }
 
     try {
       final response = await http.get(
@@ -586,46 +611,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
             response.body.contains('<episodes>') ||
             response.body.contains('"videos"') ||
             response.body.contains('<videos>')) {
-          setState(() {
-            _isCheckingUrl = false;
-            _isUrlValid = true;
-            _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
-          });
+          if (setDialogState != null) {
+            setDialogState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = true;
+              _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
+            });
+          } else {
+            setState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = true;
+              _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
+            });
+          }
         } else if (contentLength > 1000) {
           // Si le contenu est assez volumineux, on considère que c'est potentiellement valide
-          setState(() {
+          if (setDialogState != null) {
+            setDialogState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = true;
+              _urlCheckMessage = 'Source accessible - Contenu détecté';
+            });
+          } else {
+            setState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = true;
+              _urlCheckMessage = 'Source accessible - Contenu détecté';
+            });
+          }
+        } else {
+          if (setDialogState != null) {
+            setDialogState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = false;
+              _urlCheckMessage = 'Source accessible mais format non reconnu';
+            });
+          } else {
+            setState(() {
+              _isCheckingUrl = false;
+              _isUrlValid = false;
+              _urlCheckMessage = 'Source accessible mais format non reconnu';
+            });
+          }
+        }
+      } else {
+        if (setDialogState != null) {
+          setDialogState(() {
             _isCheckingUrl = false;
-            _isUrlValid = true;
-            _urlCheckMessage = 'Source accessible - Contenu détecté';
+            _isUrlValid = false;
+            _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
           });
         } else {
           setState(() {
             _isCheckingUrl = false;
             _isUrlValid = false;
-            _urlCheckMessage = 'Source accessible mais format non reconnu';
+            _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
           });
         }
+      }
+    } catch (e) {
+      if (setDialogState != null) {
+        setDialogState(() {
+          _isCheckingUrl = false;
+          _isUrlValid = false;
+          _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
+        });
       } else {
         setState(() {
           _isCheckingUrl = false;
           _isUrlValid = false;
-          _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
+          _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
         });
       }
-    } catch (e) {
-      setState(() {
-        _isCheckingUrl = false;
-        _isUrlValid = false;
-        _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
-      });
     }
-  }
-
-  void _onUrlChanged(String url) {
-    _urlCheckTimer?.cancel();
-    _urlCheckTimer = Timer(const Duration(milliseconds: 800), () {
-      _checkUrl(url);
-    });
   }
 
   Future<void> _loadSources() async {
@@ -771,9 +829,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   : null,
                     ),
                     onChanged: (value) {
-                      setDialogState(() {
-                        _onUrlChanged(value);
-                      });
+                      _onUrlChanged(value, setDialogState);
                     },
                   ),
                   // URL check message
