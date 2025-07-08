@@ -1046,14 +1046,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  void _onUrlChanged(String url, Function setDialogState) {
+  void _onUrlChanged(String url, Function setDialogState, Function(String?) onSourceNameDetected) {
     _urlCheckTimer?.cancel();
-    _urlCheckTimer = Timer(const Duration(milliseconds: 500), () {
-      _checkUrl(url, setDialogState);
+    _urlCheckTimer = Timer(const Duration(milliseconds: 500), () async {
+      final sourceName = await _checkUrl(url, setDialogState);
+      onSourceNameDetected(sourceName);
     });
   }
 
-  Future<void> _checkUrl(String url, [Function? setDialogState]) async {
+  Future<String?> _checkUrl(String url, [Function? setDialogState]) async {
     if (url.isEmpty) {
       if (setDialogState != null) {
         setDialogState(() {
@@ -1068,7 +1069,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _urlCheckMessage = '';
         });
       }
-      return;
+      return null;
     }
 
     if (setDialogState != null) {
@@ -1109,6 +1110,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 jsonData.containsKey('data') &&
                 jsonData['data'] is List) {
               final dataList = jsonData['data'] as List;
+              final sourceName = jsonData['name'] as String?;
+              
               if (dataList.isNotEmpty) {
                 // Vérifier que chaque élément de data a name et url
                 bool isValidFormat = true;
@@ -1140,6 +1143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           'Source valide - ${dataList.length} épisode(s) détecté(s)';
                     });
                   }
+                  return sourceName;
                 } else {
                   if (setDialogState != null) {
                     setDialogState(() {
@@ -1249,6 +1253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
+    return null;
   }
 
   Future<void> _loadSources() async {
@@ -1271,8 +1276,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _addSource() {
-    final TextEditingController nameController = TextEditingController();
     final TextEditingController urlController = TextEditingController();
+    String? detectedSourceName;
 
     showModalBottomSheet(
       context: context,
@@ -1322,40 +1327,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 24),
                   // Form fields
                   TextField(
-                    controller: nameController,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      labelText: 'Nom de la source',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.white54),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.red,
-                          width: 2,
-                        ),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[900],
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    autofocus: true,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
                     controller: urlController,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
-                      labelText: 'URL de la source',
+                      labelText: 'URL de la source JSON',
                       labelStyle: const TextStyle(color: Colors.white70),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1398,9 +1373,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           : null,
                     ),
                     onChanged: (value) {
-                      _onUrlChanged(value, setDialogState);
+                      _onUrlChanged(value, setDialogState, (sourceName) {
+                        detectedSourceName = sourceName;
+                      });
                     },
                   ),
+                  // Source name display
+                  if (detectedSourceName != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.blue,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Nom détecté: $detectedSourceName',
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // URL check message
                   if (_urlCheckMessage.isNotEmpty)
                     Container(
@@ -1468,13 +1480,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed:
-                              (nameController.text.isNotEmpty &&
-                                  urlController.text.isNotEmpty &&
-                                  _isUrlValid)
+                              (urlController.text.isNotEmpty &&
+                                  _isUrlValid &&
+                                  detectedSourceName != null)
                               ? () {
                                   setState(() {
                                     _sources.add({
-                                      'name': nameController.text,
+                                      'name': detectedSourceName!,
                                       'url': urlController.text,
                                     });
                                   });
@@ -1583,7 +1595,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: Colors.white),
               ),
               subtitle: const Text(
-                'Scanner une URL pour les épisodes',
+                'Scanner une URL JSON pour les épisodes',
                 style: TextStyle(color: Colors.white70),
               ),
               onTap: _addSource,
