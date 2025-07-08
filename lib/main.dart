@@ -708,7 +708,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _addSource() {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController urlController = TextEditingController();
-    bool downloadLocal = false;
     
     showModalBottomSheet(
       context: context,
@@ -864,36 +863,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  // Switch
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[900],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white54),
-                    ),
-                    child: SwitchListTile(
-                      title: const Text(
-                        'Télécharger en local',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
-                      ),
-                      subtitle: const Text(
-                        'Télécharger le contenu sur l\'appareil',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                      value: downloadLocal,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          downloadLocal = value;
-                        });
-                      },
-                      activeColor: Colors.red,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 24),
                   // Action buttons
                   Row(
@@ -928,7 +897,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _sources.add({
                                 'name': nameController.text,
                                 'url': urlController.text,
-                                'downloadLocal': downloadLocal,
                               });
                             });
                             _saveSources();
@@ -995,10 +963,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 final index = entry.key;
                 final source = entry.value;
                 return ListTile(
-                  leading: Icon(
-                    source['downloadLocal'] == true 
-                        ? Icons.download_done 
-                        : Icons.link, 
+                  leading: const Icon(
+                    Icons.link,
                     color: Colors.white,
                   ),
                   title: Text(
@@ -1007,43 +973,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        source['url'] ?? '',
-                        style: const TextStyle(color: Colors.white70),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (source['downloadLocal'] == true)
-                        const Text(
-                          'Téléchargé en local',
-                          style: TextStyle(color: Colors.green, fontSize: 12),
-                        ),
-                    ],
+                  subtitle: Text(
+                    source['url'] ?? '',
+                    style: const TextStyle(color: Colors.white70),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (source['downloadLocal'] == true)
-                        IconButton(
-                          icon: const Icon(Icons.cloud_download, color: Colors.blue),
-                          onPressed: () {
-                            // TODO: Implémenter la synchronisation
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Synchronisation...'),
-                                backgroundColor: Colors.blue,
-                              ),
-                            );
-                          },
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _removeSource(index),
-                      ),
-                    ],
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _removeSource(index),
                   ),
                 );
               }).toList(),
