@@ -722,7 +722,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     // En mode paysage, on utilise un padding plus petit
     if (orientation == Orientation.landscape) {
       // En paysage, on peut utiliser un padding plus minimal
-      return 16;
+      return 0;
     } else {
       // En mode portrait, on utilise le padding standard
       return mediaQuery.padding.top;
@@ -769,72 +769,92 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   // Titre et bouton paramètres avec padding adaptatif
                   Positioned(
                     top: _getTopPadding(context),
-                    left: 16,
-                    right: 16,
+                    left: 0,
+                    right: 0,
                     child: AnimatedOpacity(
                       opacity: (_showUI || !_controller.value.isPlaying)
                           ? 1.0
                           : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const SizedBox(width: 48), // Espace pour équilibrer
-                          Expanded(
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _currentEpisode != null
-                                        ? _currentEpisode!['name'] ?? 'Épisode'
-                                        : 'Aucun épisode sélectionné',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (_currentSource != null)
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color.fromARGB(180, 0, 0, 0),
+                              Color.fromARGB(100, 0, 0, 0),
+                              Color.fromARGB(0, 0, 0, 0),
+                            ],
+                            stops: [0.0, 0.7, 1.0],
+                          ),
+                        ),
+                        padding: const EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 8,
+                          bottom: 16,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const SizedBox(width: 48), // Espace pour équilibrer
+                            Expanded(
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                                     Text(
-                                      _currentSource!['name'] ?? 'Source',
+                                      _currentEpisode != null
+                                          ? _currentEpisode!['name'] ?? 'Épisode'
+                                          : 'Aucun épisode sélectionné',
                                       style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 14,
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                       textAlign: TextAlign.center,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                ],
+                                    if (_currentSource != null)
+                                      Text(
+                                        _currentSource!['name'] ?? 'Source',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.video_library,
-                                  color: Colors.white,
-                                  size: 28,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.video_library,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  onPressed: _selectEpisode,
                                 ),
-                                onPressed: _selectEpisode,
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.settings,
-                                  color: Colors.white,
-                                  size: 32,
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.settings,
+                                    color: Colors.white,
+                                    size: 32,
+                                  ),
+                                  onPressed: _openSettings,
                                 ),
-                                onPressed: _openSettings,
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -881,125 +901,145 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                   ),
                   Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 16,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
                     child: AnimatedOpacity(
                       opacity: (_showUI || !_controller.value.isPlaying)
                           ? 1.0
                           : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              children: [
-                                // Temps actuel
-                                Text(
-                                  _controller.value.isInitialized
-                                      ? _formatDuration(
-                                          _controller.value.position,
-                                        )
-                                      : '0:00',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Curseur rouge
-                                Expanded(
-                                  child: SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      activeTrackColor: Colors.red,
-                                      inactiveTrackColor: Colors.white24,
-                                      thumbColor: Colors.red,
-                                      overlayColor: Colors.red.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                      trackHeight: 3,
-                                      thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 10,
-                                      ),
-                                    ),
-                                    child: Slider(
-                                      value: _controller.value.isInitialized
-                                          ? _controller
-                                                .value
-                                                .position
-                                                .inMilliseconds
-                                                .toDouble()
-                                          : 0.0,
-                                      min: 0.0,
-                                      max: _controller.value.isInitialized
-                                          ? _controller
-                                                .value
-                                                .duration
-                                                .inMilliseconds
-                                                .toDouble()
-                                          : 1.0,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _isDragging = true;
-                                        });
-                                      },
-                                      onChangeEnd: (value) {
-                                        _controller.seekTo(
-                                          Duration(milliseconds: value.toInt()),
-                                        );
-                                        setState(() {
-                                          _isDragging = false;
-                                        });
-                                      },
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Color.fromARGB(180, 0, 0, 0),
+                              Color.fromARGB(100, 0, 0, 0),
+                              Color.fromARGB(0, 0, 0, 0),
+                            ],
+                            stops: [0.0, 0.7, 1.0],
+                          ),
+                        ),
+                        padding: const EdgeInsets.only(
+                          left: 12,
+                          right: 12,
+                          top: 16,
+                          bottom: 16,
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                children: [
+                                  // Temps actuel
+                                  Text(
+                                    _controller.value.isInitialized
+                                        ? _formatDuration(
+                                            _controller.value.position,
+                                          )
+                                        : '0:00',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                // Temps total
-                                Text(
-                                  _controller.value.isInitialized
-                                      ? _formatDuration(
-                                          _controller.value.duration,
-                                        )
-                                      : '0:00',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                  const SizedBox(width: 12),
+                                  // Curseur rouge
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        activeTrackColor: Colors.red,
+                                        inactiveTrackColor: Colors.white24,
+                                        thumbColor: Colors.red,
+                                        overlayColor: Colors.red.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        trackHeight: 3,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 10,
+                                        ),
+                                      ),
+                                      child: Slider(
+                                        value: _controller.value.isInitialized
+                                            ? _controller
+                                                  .value
+                                                  .position
+                                                  .inMilliseconds
+                                                  .toDouble()
+                                            : 0.0,
+                                        min: 0.0,
+                                        max: _controller.value.isInitialized
+                                            ? _controller
+                                                  .value
+                                                  .duration
+                                                  .inMilliseconds
+                                                  .toDouble()
+                                            : 1.0,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _isDragging = true;
+                                          });
+                                        },
+                                        onChangeEnd: (value) {
+                                          _controller.seekTo(
+                                            Duration(milliseconds: value.toInt()),
+                                          );
+                                          setState(() {
+                                            _isDragging = false;
+                                          });
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 12),
+                                  // Temps total
+                                  Text(
+                                    _controller.value.isInitialized
+                                        ? _formatDuration(
+                                            _controller.value.duration,
+                                          )
+                                        : '0:00',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _netflixAction(
-                                  _isLocked ? Icons.lock : Icons.lock_open,
-                                  _isLocked ? 'Vérouiller' : 'Dévérouiller',
-                                  () {
-                                    if (_isLocked) {
-                                      _showUnlockModal();
-                                    } else {
-                                      setState(() {
-                                        _isLocked = true;
-                                      });
-                                    }
-                                  },
-                                ),
-                                _netflixAction(Icons.skip_next, 'Suivant', () {
-                                  if (_isLocked) return;
-                                  _playNextEpisode();
-                                }),
-                              ],
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _netflixAction(
+                                    _isLocked ? Icons.lock : Icons.lock_open,
+                                    _isLocked ? 'Vérouiller' : 'Dévérouiller',
+                                    () {
+                                      if (_isLocked) {
+                                        _showUnlockModal();
+                                      } else {
+                                        setState(() {
+                                          _isLocked = true;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  _netflixAction(Icons.skip_next, 'Suivant', () {
+                                    if (_isLocked) return;
+                                    _playNextEpisode();
+                                  }),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
