@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(const VideoPlayerApp());
 
@@ -530,11 +532,387 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _autoPlay = true;
-  bool _loopVideo = true;
-  bool _showSubtitles = false;
-  double _volume = 1.0;
-  String _selectedQuality = 'Auto';
+  List<Map<String, dynamic>> _sources = [];
+  Timer? _urlCheckTimer;
+  bool _isCheckingUrl = false;
+  bool _isUrlValid = false;
+  String _urlCheckMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSources();
+  }
+
+  @override
+  void dispose() {
+    _urlCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkUrl(String url) async {
+    if (url.isEmpty) {
+      setState(() {
+        _isCheckingUrl = false;
+        _isUrlValid = false;
+        _urlCheckMessage = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _isCheckingUrl = true;
+      _isUrlValid = false;
+      _urlCheckMessage = 'Vérification en cours...';
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final contentType = response.headers['content-type'] ?? '';
+        final contentLength = response.contentLength ?? 0;
+        
+        // Vérifier si c'est du JSON ou du XML (liste d'épisodes)
+        if (contentType.contains('application/json') || 
+            contentType.contains('application/xml') ||
+            contentType.contains('text/xml') ||
+            response.body.contains('"episodes"') ||
+            response.body.contains('<episodes>') ||
+            response.body.contains('"videos"') ||
+            response.body.contains('<videos>')) {
+          setState(() {
+            _isCheckingUrl = false;
+            _isUrlValid = true;
+            _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
+          });
+        } else if (contentLength > 1000) {
+          // Si le contenu est assez volumineux, on considère que c'est potentiellement valide
+          setState(() {
+            _isCheckingUrl = false;
+            _isUrlValid = true;
+            _urlCheckMessage = 'Source accessible - Contenu détecté';
+          });
+        } else {
+          setState(() {
+            _isCheckingUrl = false;
+            _isUrlValid = false;
+            _urlCheckMessage = 'Source accessible mais format non reconnu';
+          });
+        }
+      } else {
+        setState(() {
+          _isCheckingUrl = false;
+          _isUrlValid = false;
+          _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isCheckingUrl = false;
+        _isUrlValid = false;
+        _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
+      });
+    }
+  }
+
+  void _onUrlChanged(String url) {
+    _urlCheckTimer?.cancel();
+    _urlCheckTimer = Timer(const Duration(milliseconds: 800), () {
+      _checkUrl(url);
+    });
+  }
+
+  Future<void> _loadSources() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sourcesJson = prefs.getStringList('video_sources') ?? [];
+    setState(() {
+      _sources = sourcesJson.map((json) {
+        final Map<String, dynamic> source = Map<String, dynamic>.from(
+          jsonDecode(json) as Map,
+        );
+        return source;
+      }).toList();
+    });
+  }
+
+  Future<void> _saveSources() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sourcesJson = _sources.map((source) => jsonEncode(source)).toList();
+    await prefs.setStringList('video_sources', sourcesJson);
+  }
+
+  void _addSource() {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController urlController = TextEditingController();
+    bool downloadLocal = false;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Handle bar
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[600],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    margin: const EdgeInsets.only(bottom: 20),
+                  ),
+                  // Title
+                  const Text(
+                    'Ajouter une source',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  // Form fields
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      labelText: 'Nom de la source',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.white54),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.red, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: urlController,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                    decoration: InputDecoration(
+                      labelText: 'URL de la source',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.white54),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _isUrlValid ? Colors.green : Colors.red,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[900],
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      suffixIcon: _isCheckingUrl
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                            )
+                          : _isUrlValid
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : urlController.text.isNotEmpty
+                                  ? const Icon(Icons.error, color: Colors.red)
+                                  : null,
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        _onUrlChanged(value);
+                      });
+                    },
+                  ),
+                  // URL check message
+                  if (_urlCheckMessage.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isUrlValid ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _isUrlValid ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isUrlValid ? Icons.check_circle : Icons.info,
+                            color: _isUrlValid ? Colors.green : Colors.red,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _urlCheckMessage,
+                              style: TextStyle(
+                                color: _isUrlValid ? Colors.green : Colors.red,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  // Switch
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[900],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white54),
+                    ),
+                    child: SwitchListTile(
+                      title: const Text(
+                        'Télécharger en local',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      subtitle: const Text(
+                        'Télécharger le contenu sur l\'appareil',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      value: downloadLocal,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          downloadLocal = value;
+                        });
+                      },
+                      activeColor: Colors.red,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white54),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text(
+                            'Annuler',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: (nameController.text.isNotEmpty && 
+                                     urlController.text.isNotEmpty && 
+                                     _isUrlValid) ? () {
+                            setState(() {
+                              _sources.add({
+                                'name': nameController.text,
+                                'url': urlController.text,
+                                'downloadLocal': downloadLocal,
+                              });
+                            });
+                            _saveSources();
+                            Navigator.of(context).pop();
+                          } : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text(
+                            'Ajouter',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _removeSource(int index) {
+    setState(() {
+      _sources.removeAt(index);
+    });
+    _saveSources();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -555,53 +933,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildSection(
-            'Lecture',
+            'Sources',
             [
-              _buildSwitchTile(
-                'Lecture automatique',
-                'Démarrer la vidéo automatiquement',
-                _autoPlay,
-                (value) => setState(() => _autoPlay = value),
-                Icons.play_arrow,
-              ),
-              _buildSwitchTile(
-                'Lecture en boucle',
-                'Rejouer la vidéo automatiquement',
-                _loopVideo,
-                (value) => setState(() => _loopVideo = value),
-                Icons.repeat,
-              ),
-              _buildSwitchTile(
-                'Sous-titres',
-                'Afficher les sous-titres',
-                _showSubtitles,
-                (value) => setState(() => _showSubtitles = value),
-                Icons.subtitles,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSection(
-            'Audio',
-            [
-              _buildSliderTile(
-                'Volume',
-                _volume,
-                (value) => setState(() => _volume = value),
-                Icons.volume_up,
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildSection(
-            'Qualité',
-            [
-              _buildDropdownTile(
-                'Qualité vidéo',
-                _selectedQuality,
-                ['Auto', '1080p', '720p', '480p', '360p'],
-                (value) => setState(() => _selectedQuality = value!),
-                Icons.high_quality,
+              ..._sources.asMap().entries.map((entry) {
+                final index = entry.key;
+                final source = entry.value;
+                return ListTile(
+                  leading: Icon(
+                    source['downloadLocal'] == true 
+                        ? Icons.download_done 
+                        : Icons.link, 
+                    color: Colors.white,
+                  ),
+                  title: Text(
+                    source['name'] ?? 'Source ${index + 1}',
+                    style: const TextStyle(color: Colors.white),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        source['url'] ?? '',
+                        style: const TextStyle(color: Colors.white70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (source['downloadLocal'] == true)
+                        const Text(
+                          'Téléchargé en local',
+                          style: TextStyle(color: Colors.green, fontSize: 12),
+                        ),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (source['downloadLocal'] == true)
+                        IconButton(
+                          icon: const Icon(Icons.cloud_download, color: Colors.blue),
+                          onPressed: () {
+                            // TODO: Implémenter la synchronisation
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Synchronisation...'),
+                                backgroundColor: Colors.blue,
+                              ),
+                            );
+                          },
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _removeSource(index),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              ListTile(
+                leading: const Icon(Icons.add, color: Colors.white),
+                title: const Text(
+                  'Ajouter une source',
+                  style: TextStyle(color: Colors.white),
+                ),
+                subtitle: const Text(
+                  'Scanner une URL pour les épisodes',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                onTap: _addSource,
               ),
             ],
           ),
@@ -654,84 +1054,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSwitchTile(
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-    IconData icon,
-  ) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(color: Colors.white70),
-      ),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.red,
-      ),
-    );
-  }
 
-  Widget _buildSliderTile(
-    String title,
-    double value,
-    ValueChanged<double> onChanged,
-    IconData icon,
-  ) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
-      subtitle: Slider(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Colors.red,
-        inactiveColor: Colors.white24,
-      ),
-      trailing: Text(
-        '${(value * 100).toInt()}%',
-        style: const TextStyle(color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildDropdownTile(
-    String title,
-    String value,
-    List<String> options,
-    ValueChanged<String?> onChanged,
-    IconData icon,
-  ) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white),
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white),
-      ),
-      trailing: DropdownButton<String>(
-        value: value,
-        onChanged: onChanged,
-        dropdownColor: Colors.grey[900],
-        style: const TextStyle(color: Colors.white),
-        underline: Container(),
-        items: options.map((String option) {
-          return DropdownMenuItem<String>(
-            value: option,
-            child: Text(option),
-          );
-        }).toList(),
-      ),
-    );
-  }
 
   Widget _buildActionTile(
     String title,
