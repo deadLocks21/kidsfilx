@@ -47,7 +47,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Map<String, dynamic>? _currentSource;
   Map<String, dynamic>? _currentEpisode;
   List<Map<String, dynamic>> _downloadedEpisodes = [];
-  bool _autoLoadFirstEpisode = false;
   bool _shuffleEpisodes = false;
 
   @override
@@ -96,9 +95,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<bool> _loadAutoLoadOption() async {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getBool('auto_load_first_episode') ?? false;
-    setState(() {
-      _autoLoadFirstEpisode = value;
-    });
     return value;
   }
 
@@ -401,13 +397,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _isLocked = false;
       });
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lecteur déverrouillé !'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -464,7 +453,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Aucun épisode téléchargé trouvé (${_downloadedEpisodes.length}). Allez dans les paramètres pour télécharger des vidéos.',
+            'Aucun épisode téléchargé. Allez dans les paramètres pour télécharger des vidéos.',
           ),
           backgroundColor: Colors.orange,
           duration: const Duration(seconds: 3),
@@ -695,6 +684,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _playEpisode(nextEpisode);
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<String?> _getThumbnailForEpisode(Map<String, dynamic> episode) async {
     try {
       final sourceName = episode['sourceName'] as String;
@@ -766,7 +765,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         }
       }
     } catch (e) {
-      print('Erreur lors de la récupération de la miniature: $e');
+      _showError('Erreur lors de la récupération de la miniature: $e');
     }
 
     return null;
@@ -1682,6 +1681,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   Future<void> _removeSource(int index) async {
     final source = _sources[index];
     final sourceName = source['name'] as String?;
@@ -1747,7 +1756,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      print('Erreur lors de la suppression des fichiers: $e');
+      _showError('Erreur lors de la suppression des fichiers: $e');
     }
   }
 
@@ -1761,7 +1770,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.remove('episodes_metadata_$sourceName');
       await prefs.remove('thumbnails_$sourceName');
     } catch (e) {
-      print('Erreur lors de la suppression des données: $e');
+      _showError('Erreur lors de la suppression des données: $e');
     }
   }
 
@@ -2613,13 +2622,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       await _dio.download(
         url,
         filePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = (received / total * 100).round();
-            print('Progression: $progress%');
-            // Ici on pourrait afficher la progression si nécessaire
-          }
-        },
+        onReceiveProgress: (received, total) {},
       );
 
       // Vérifier que le fichier existe
@@ -2635,8 +2638,6 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
 
         await _saveDownloadedEpisodes();
         await _saveDownloadedFiles();
-
-        _showSuccess('Épisode "$name" téléchargé !');
       } else {
         throw Exception('Fichier non créé');
       }
@@ -2673,8 +2674,6 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
           _isDownloadingAll = false;
         });
       }
-
-      _showSuccess('Tous les épisodes ont été téléchargés !');
     } catch (e) {
       if (mounted) {
         setState(() {
