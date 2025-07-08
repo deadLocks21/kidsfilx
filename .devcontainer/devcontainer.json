@@ -9,14 +9,16 @@
         "--device", 
         "/dev/kvm",
         "--device",
-        "/dev/usb"
+        "/dev/usb",
+        "--device-cgroup-rule",
+        "c 189:* rmw"
     ],
     "mounts": [
         "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
         "source=/usr/bin/xdg-open,target=/usr/bin/xdg-open,type=bind",
-        "source=/dev/bus/usb,target=/dev/bus/usb,type=bind",
         "source=/dev/kvm,target=/dev/kvm,type=bind",
-        "source=/dev/usb,target=/dev/usb,type=bind"
+        "source=/dev/usb,target=/dev/usb,type=bind",
+        "source=/dev/bus/usb,target=/dev/bus/usb,type=bind"
     ],
     "containerEnv": {
         "DISPLAY": "${env:DISPLAY}",
