@@ -51,8 +51,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    // Masquer la barre de statut et la barre de navigation
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    // Masquer complètement la barre de statut et la barre de navigation
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    
+    // Configuration supplémentaire pour masquer l'heure et les notifications
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
 
     // Initialiser avec un contrôleur vide
     _controller = VideoPlayerController.networkUrl(
@@ -255,6 +263,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       SystemUiMode.manual,
       overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
     );
+    
+    // Restaurer le style par défaut de l'interface système
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
 
     _timer?.cancel();
     _uiTimer?.cancel();
