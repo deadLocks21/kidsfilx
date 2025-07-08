@@ -601,56 +601,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (response.statusCode == 200) {
         final contentType = response.headers['content-type'] ?? '';
-        final contentLength = response.contentLength ?? 0;
         
-        // Vérifier si c'est du JSON ou du XML (liste d'épisodes)
+        // Vérifier si c'est du JSON
         if (contentType.contains('application/json') || 
-            contentType.contains('application/xml') ||
-            contentType.contains('text/xml') ||
-            response.body.contains('"episodes"') ||
-            response.body.contains('<episodes>') ||
-            response.body.contains('"videos"') ||
-            response.body.contains('<videos>')) {
-          if (setDialogState != null) {
-            setDialogState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = true;
-              _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
-            });
-          } else {
-            setState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = true;
-              _urlCheckMessage = 'Source valide - Format d\'épisodes détecté';
-            });
-          }
-        } else if (contentLength > 1000) {
-          // Si le contenu est assez volumineux, on considère que c'est potentiellement valide
-          if (setDialogState != null) {
-            setDialogState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = true;
-              _urlCheckMessage = 'Source accessible - Contenu détecté';
-            });
-          } else {
-            setState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = true;
-              _urlCheckMessage = 'Source accessible - Contenu détecté';
-            });
+            response.body.trim().startsWith('{')) {
+          
+          try {
+            final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
+            
+            // Vérifier la structure attendue
+            if (jsonData.containsKey('name') && 
+                jsonData.containsKey('data') && 
+                jsonData['data'] is List) {
+              
+              final dataList = jsonData['data'] as List;
+              if (dataList.isNotEmpty) {
+                // Vérifier que chaque élément de data a name et url
+                bool isValidFormat = true;
+                for (var item in dataList) {
+                  if (item is Map<String, dynamic>) {
+                    if (!item.containsKey('name') || !item.containsKey('url')) {
+                      isValidFormat = false;
+                      break;
+                    }
+                  } else {
+                    isValidFormat = false;
+                    break;
+                  }
+                }
+                
+                if (isValidFormat) {
+                  if (setDialogState != null) {
+                    setDialogState(() {
+                      _isCheckingUrl = false;
+                      _isUrlValid = true;
+                      _urlCheckMessage = 'Source valide - ${dataList.length} épisode(s) détecté(s)';
+                    });
+                  } else {
+                    setState(() {
+                      _isCheckingUrl = false;
+                      _isUrlValid = true;
+                      _urlCheckMessage = 'Source valide - ${dataList.length} épisode(s) détecté(s)';
+                    });
+                  }
+                } else {
+                  if (setDialogState != null) {
+                    setDialogState(() {
+                      _isCheckingUrl = false;
+                      _isUrlValid = false;
+                      _urlCheckMessage = 'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
+                    });
+                  } else {
+                    setState(() {
+                      _isCheckingUrl = false;
+                      _isUrlValid = false;
+                      _urlCheckMessage = 'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
+                    });
+                  }
+                }
+              } else {
+                if (setDialogState != null) {
+                  setDialogState(() {
+                    _isCheckingUrl = false;
+                    _isUrlValid = false;
+                    _urlCheckMessage = 'Source vide - Aucun épisode trouvé';
+                  });
+                } else {
+                  setState(() {
+                    _isCheckingUrl = false;
+                    _isUrlValid = false;
+                    _urlCheckMessage = 'Source vide - Aucun épisode trouvé';
+                  });
+                }
+              }
+            } else {
+              if (setDialogState != null) {
+                setDialogState(() {
+                  _isCheckingUrl = false;
+                  _isUrlValid = false;
+                  _urlCheckMessage = 'Format JSON invalide - Champs "name" et "data" requis';
+                });
+              } else {
+                setState(() {
+                  _isCheckingUrl = false;
+                  _isUrlValid = false;
+                  _urlCheckMessage = 'Format JSON invalide - Champs "name" et "data" requis';
+                });
+              }
+            }
+          } catch (e) {
+            if (setDialogState != null) {
+              setDialogState(() {
+                _isCheckingUrl = false;
+                _isUrlValid = false;
+                _urlCheckMessage = 'JSON invalide - Erreur de parsing';
+              });
+            } else {
+              setState(() {
+                _isCheckingUrl = false;
+                _isUrlValid = false;
+                _urlCheckMessage = 'JSON invalide - Erreur de parsing';
+              });
+            }
           }
         } else {
           if (setDialogState != null) {
             setDialogState(() {
               _isCheckingUrl = false;
               _isUrlValid = false;
-              _urlCheckMessage = 'Source accessible mais format non reconnu';
+              _urlCheckMessage = 'Format non supporté - JSON requis';
             });
           } else {
             setState(() {
               _isCheckingUrl = false;
               _isUrlValid = false;
-              _urlCheckMessage = 'Source accessible mais format non reconnu';
+              _urlCheckMessage = 'Format non supporté - JSON requis';
             });
           }
         }
