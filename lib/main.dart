@@ -2879,7 +2879,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          if (!_isLoading && _episodes.isNotEmpty)
+          if (!_isLoading && _episodes.isNotEmpty && _downloadedEpisodes.length < _episodes.length)
             IconButton(
               icon: Icon(
                 _isDownloadingAll ? Icons.stop : Icons.download,
