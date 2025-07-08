@@ -198,6 +198,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: AnimatedOpacity(
+          opacity: (_showUI || !_controller.value.isPlaying) ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: const Text(
+              '"Has This Ever Happened To You?"',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 32,
+                ),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: FutureBuilder(
         future: _initializeVideoPlayerFuture,
         builder: (context, snapshot) {
@@ -228,47 +262,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     child: AspectRatio(
                       aspectRatio: _controller.value.aspectRatio,
                       child: VideoPlayer(_controller),
-                    ),
-                  ),
-                  // Titre et croix
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    right: 12,
-                    child: AnimatedOpacity(
-                      opacity: (_showUI || !_controller.value.isPlaying)
-                          ? 1.0
-                          : 0.0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const SizedBox(width: 48),
-                          Expanded(
-                            child: Center(
-                              child: Text(
-                                '"Has This Ever Happened To You?"',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                            onPressed: () => Navigator.of(context).maybePop(),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                   // Contrôles centraux
