@@ -48,6 +48,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Map<String, dynamic>? _currentEpisode;
   List<Map<String, dynamic>> _downloadedEpisodes = [];
   bool _autoLoadFirstEpisode = false;
+  bool _shuffleEpisodes = false;
 
   @override
   void initState() {
@@ -77,6 +78,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _loadSources();
     _loadDownloadedEpisodes();
     _loadAutoLoadOption();
+    _loadShuffleOption();
   }
 
   Future<void> _loadUnlockCode() async {
@@ -106,6 +108,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _playEpisode(_downloadedEpisodes.first);
       }
     }
+  }
+
+  Future<void> _loadShuffleOption() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _shuffleEpisodes = prefs.getBool('shuffle_episodes') ?? false;
+    });
   }
 
   Future<void> _loadSources() async {
@@ -181,6 +190,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     setState(() {
       _downloadedEpisodes = allDownloaded;
     });
+
+    // Appliquer le mélange si l'option est activée
+    if (_shuffleEpisodes && _downloadedEpisodes.isNotEmpty) {
+      _downloadedEpisodes.shuffle();
+      setState(() {});
+    }
 
     // Nettoyer les épisodes orphelins (sans fichier)
     await _cleanupOrphanedEpisodes();
@@ -1112,11 +1127,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Ajout : option Lecture
   bool _autoLoadFirstEpisode = false;
+  bool _shuffleEpisodes = false;
 
   @override
   void initState() {
     super.initState();
     _loadSources();
+    _loadShuffleOption();
   }
 
   @override
@@ -1357,6 +1374,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('auto_load_first_episode', value);
     setState(() {
       _autoLoadFirstEpisode = value;
+    });
+  }
+
+  Future<void> _loadShuffleOption() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _shuffleEpisodes = prefs.getBool('shuffle_episodes') ?? false;
+    });
+  }
+
+  Future<void> _saveShuffleOption(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('shuffle_episodes', value);
+    setState(() {
+      _shuffleEpisodes = value;
     });
   }
 
@@ -1800,6 +1832,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               subtitle: const Text(
                 'Lance le premier épisode téléchargé au démarrage',
+                style: TextStyle(color: Colors.white70),
+              ),
+              activeColor: Colors.red,
+              inactiveThumbColor: Colors.white54,
+              inactiveTrackColor: Colors.white24,
+            ),
+            SwitchListTile(
+              value: _shuffleEpisodes,
+              onChanged: (value) => _saveShuffleOption(value),
+              title: const Text(
+                'Mélanger les épisodes au démarrage',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Réorganise aléatoirement la liste des épisodes à chaque lancement',
                 style: TextStyle(color: Colors.white70),
               ),
               activeColor: Colors.red,
