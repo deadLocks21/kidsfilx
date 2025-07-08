@@ -75,10 +75,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _controller.setLooping(true);
     _startTimer();
     _loadUnlockCode();
-    _loadSources();
-    _loadDownloadedEpisodes();
-    _loadAutoLoadOption();
-    _loadShuffleOption();
+    _initAsync();
   }
 
   Future<void> _loadUnlockCode() async {
@@ -96,18 +93,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
   }
 
-  Future<void> _loadAutoLoadOption() async {
+  Future<bool> _loadAutoLoadOption() async {
     final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getBool('auto_load_first_episode') ?? false;
     setState(() {
-      _autoLoadFirstEpisode = prefs.getBool('auto_load_first_episode') ?? false;
+      _autoLoadFirstEpisode = value;
     });
-    // Si activé, tenter de charger le premier épisode téléchargé
-    if (_autoLoadFirstEpisode) {
-      await _loadDownloadedEpisodes();
-      if (_downloadedEpisodes.isNotEmpty) {
-        _playEpisode(_downloadedEpisodes.first);
-      }
+    return value;
+  }
+
+  Future<void> _checkAndAutoLoadEpisode(bool autoLoad) async {
+    // Attendre que les épisodes soient chargés
+    await _loadDownloadedEpisodes();
+    // Vérifier l'option d'auto-chargement
+    if (autoLoad && _downloadedEpisodes.isNotEmpty) {
+      _playEpisode(_downloadedEpisodes.first);
     }
+  }
+
+  Future<void> _initAsync() async {
+    await _loadSources();
+    await _loadShuffleOption();
+    final autoLoad = await _loadAutoLoadOption();
+    await _checkAndAutoLoadEpisode(autoLoad);
   }
 
   Future<void> _loadShuffleOption() async {
@@ -128,8 +136,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         return source;
       }).toList();
     });
-    // Recharger les épisodes après avoir chargé les sources
-    await _loadDownloadedEpisodes();
   }
 
   Future<void> _loadDownloadedEpisodes() async {
@@ -1134,6 +1140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _loadSources();
     _loadShuffleOption();
+    _loadAutoLoadOption();
   }
 
   @override
@@ -1367,6 +1374,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return source;
       }).toList();
     });
+  }
+
+  Future<bool> _loadAutoLoadOption() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getBool('auto_load_first_episode') ?? false;
+    setState(() {
+      _autoLoadFirstEpisode = value;
+    });
+    return value;
   }
 
   Future<void> _saveAutoLoadOption(bool value) async {
