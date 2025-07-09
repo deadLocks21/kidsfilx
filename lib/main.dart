@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
+import 'app_lock_service.dart';
 
 void main() => runApp(const VideoPlayerApp());
 
@@ -408,11 +409,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  void _validateCode() {
+  void _validateCode() async {
     if (_codeController.text == _unlockCode) {
       setState(() {
         _isLocked = false;
       });
+      
+      // Essayer d'arrêter le lock task natif, mais ne pas bloquer si ça échoue
+      try {
+        await AppLockService.stopLockTask();
+      } catch (e) {
+        print('Erreur lors de l\'arrêt du lock task: $e');
+      }
+      
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1089,13 +1098,39 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                   _netflixAction(
                                     _isLocked ? Icons.lock : Icons.lock_open,
                                     _isLocked ? 'Vérouiller' : 'Dévérouiller',
-                                    () {
+                                    () async {
                                       if (_isLocked) {
                                         _showUnlockModal();
                                       } else {
-                                        setState(() {
-                                          _isLocked = true;
-                                        });
+                                        final success = await AppLockService.startLockTask();
+                                        if (success) {
+                                          setState(() {
+                                            _isLocked = true;
+                                          });
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Mode verrouillage système activé'),
+                                              backgroundColor: Colors.green,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        } else {
+                                          // Fallback: verrouillage logiciel si le verrouillage système échoue
+                                          setState(() {
+                                            _isLocked = true;
+                                          });
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                AppLockService.isNativeAvailable 
+                                                  ? 'Mode verrouillage logiciel activé'
+                                                  : 'Mode verrouillage activé (système non disponible)'
+                                              ),
+                                              backgroundColor: Colors.orange,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
                                       }
                                     },
                                   ),
