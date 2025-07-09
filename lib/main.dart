@@ -71,7 +71,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
     _initializeVideoPlayerFuture =
         Future.value(); // Pas d'initialisation automatique
-    _controller.setLooping(true);
+    _controller.setLooping(false); // Désactiver la boucle
+    _controller.addListener(_onVideoEnd); // Ajouter un listener pour détecter la fin
     _startTimer();
     _loadUnlockCode();
     _initAsync();
@@ -260,6 +261,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     });
   }
 
+  void _onVideoEnd() {
+    // Vérifier si la vidéo est terminée
+    if (_controller.value.position >= _controller.value.duration &&
+        _controller.value.duration > Duration.zero) {
+      // Passer à l'épisode suivant et continuer la lecture
+      _playNextEpisode();
+      // Démarrer la lecture automatiquement après un court délai
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && _controller.value.isInitialized) {
+          _controller.play();
+        }
+      });
+    }
+  }
+
   void _showAndAutoHideUI() {
     setState(() {
       _showUI = true;
@@ -311,6 +327,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     _timer?.cancel();
     _uiTimer?.cancel();
+    _controller.removeListener(_onVideoEnd); // Retirer le listener
     _controller.dispose();
     _codeController.dispose();
     super.dispose();
@@ -638,7 +655,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
 
     _initializeVideoPlayerFuture = _controller.initialize();
-    _controller.setLooping(true);
+    _controller.setLooping(false); // Désactiver la boucle
+    _controller.addListener(_onVideoEnd); // Ajouter le listener pour détecter la fin
 
     setState(() {
       _currentSource = episode['source'];
