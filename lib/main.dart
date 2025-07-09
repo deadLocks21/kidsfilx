@@ -73,7 +73,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _initializeVideoPlayerFuture =
         Future.value(); // Pas d'initialisation automatique
     _controller.setLooping(false); // Désactiver la boucle
-    _controller.addListener(_onVideoEnd); // Ajouter un listener pour détecter la fin
+    _controller.addListener(
+      _onVideoEnd,
+    ); // Ajouter un listener pour détecter la fin
     _startTimer();
     _loadUnlockCode();
     _initAsync();
@@ -414,14 +416,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       setState(() {
         _isLocked = false;
       });
-      
+
       // Essayer d'arrêter le lock task natif, mais ne pas bloquer si ça échoue
       try {
         await AppLockService.stopLockTask();
       } catch (e) {
         print('Erreur lors de l\'arrêt du lock task: $e');
       }
-      
+
       Navigator.of(context).pop();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -665,7 +667,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     _initializeVideoPlayerFuture = _controller.initialize();
     _controller.setLooping(false); // Désactiver la boucle
-    _controller.addListener(_onVideoEnd); // Ajouter le listener pour détecter la fin
+    _controller.addListener(
+      _onVideoEnd,
+    ); // Ajouter le listener pour détecter la fin
 
     setState(() {
       _currentSource = episode['source'];
@@ -846,7 +850,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   Center(
                     child: AspectRatio(
                       aspectRatio: _controller.value.aspectRatio,
-                      child: VideoPlayer(_controller),
+                      child: VideoPlayer(_controller, key: const Key('videoplayer_video')),
                     ),
                   ),
                   // Titre avec padding adaptatif
@@ -883,6 +887,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
+                                key: const Key('videoplayer_title'),
                                 _currentEpisode != null
                                     ? _currentEpisode!['name'] ?? 'Épisode'
                                     : 'Aucun épisode sélectionné',
@@ -925,6 +930,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
+                          key: Key(
+                            _controller.value.isPlaying
+                                ? 'videoplayer_pause_button'
+                                : 'videoplayer_play_button',
+                          ),
                           icon: Icon(
                             _controller.value.isPlaying
                                 ? Icons.pause
@@ -1102,14 +1112,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                       if (_isLocked) {
                                         _showUnlockModal();
                                       } else {
-                                        final success = await AppLockService.startLockTask();
+                                        final success =
+                                            await AppLockService.startLockTask();
                                         if (success) {
                                           setState(() {
                                             _isLocked = true;
                                           });
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             const SnackBar(
-                                              content: Text('Mode verrouillage système activé'),
+                                              content: Text(
+                                                'Mode verrouillage système activé',
+                                              ),
                                               backgroundColor: Colors.green,
                                               duration: Duration(seconds: 2),
                                             ),
@@ -1119,12 +1134,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                           setState(() {
                                             _isLocked = true;
                                           });
-                                          ScaffoldMessenger.of(context).showSnackBar(
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
                                             SnackBar(
                                               content: Text(
-                                                AppLockService.isNativeAvailable 
-                                                  ? 'Mode verrouillage logiciel activé'
-                                                  : 'Mode verrouillage activé (système non disponible)'
+                                                AppLockService.isNativeAvailable
+                                                    ? 'Mode verrouillage logiciel activé'
+                                                    : 'Mode verrouillage activé (système non disponible)',
                                               ),
                                               backgroundColor: Colors.orange,
                                               duration: Duration(seconds: 2),
@@ -2696,7 +2713,7 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         if (await file.exists()) {
           await file.delete();
         }
-        
+
         if (mounted) {
           setState(() {
             _downloadingEpisodes.remove(index);
@@ -2747,15 +2764,15 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
         if (_shouldStopDownload) {
           break;
         }
-        
+
         if (!_downloadedEpisodes.contains(i)) {
           await _downloadEpisode(i);
-          
+
           // Vérifier à nouveau si l'arrêt a été demandé après chaque téléchargement
           if (_shouldStopDownload) {
             break;
           }
-          
+
           // Petit délai entre les téléchargements
           await Future.delayed(const Duration(milliseconds: 500));
         }
@@ -2910,10 +2927,10 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
       _shouldStopDownload = true;
       _isDownloadingAll = false;
     });
-    
+
     // Arrêter tous les téléchargements individuels en cours
     _downloadingEpisodes.clear();
-    
+
     _showSuccess('Arrêt des téléchargements en cours...');
   }
 
@@ -2932,20 +2949,21 @@ class _VideoSelectionScreenState extends State<VideoSelectionScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          if (!_isLoading && _episodes.isNotEmpty && _downloadedEpisodes.length < _episodes.length)
+          if (!_isLoading &&
+              _episodes.isNotEmpty &&
+              _downloadedEpisodes.length < _episodes.length)
             IconButton(
               icon: Icon(
                 _isDownloadingAll ? Icons.stop : Icons.download,
                 color: Colors.white,
               ),
-              onPressed: _isDownloadingAll ? _stopAllDownloads : _downloadAllEpisodes,
+              onPressed: _isDownloadingAll
+                  ? _stopAllDownloads
+                  : _downloadAllEpisodes,
             ),
           if (_downloadedEpisodes.isNotEmpty)
             IconButton(
-              icon: const Icon(
-                Icons.delete_sweep,
-                color: Colors.red,
-              ),
+              icon: const Icon(Icons.delete_sweep, color: Colors.red),
               onPressed: _showDeleteAllConfirmation,
             ),
         ],
