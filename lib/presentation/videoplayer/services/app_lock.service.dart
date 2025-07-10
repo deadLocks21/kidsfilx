@@ -1,7 +1,9 @@
 import 'package:flutter/services.dart';
 
 class AppLockService {
-  static const MethodChannel _channel = MethodChannel('fr.dtfh.kidflix/app_lock');
+  static const MethodChannel _channel = MethodChannel(
+    'fr.dtfh.kidflix/app_lock',
+  );
   static bool _isNativeAvailable = true;
 
   /// Démarre le mode verrouillage d'application
@@ -59,4 +61,4 @@ class AppLockService {
   }
 
   static bool get isNativeAvailable => _isNativeAvailable;
-} 
+}
