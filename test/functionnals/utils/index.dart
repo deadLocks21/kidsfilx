@@ -1,4 +1,5 @@
 export 'actions/base.dart';
+export 'config.dart';
 export 'pumps.dart';
 export 'types.dart';
 
