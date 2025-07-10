@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kidflix/presentation/videoplayer/videoplayer.page.dart';
+import 'package:kidflix/ui/videoplayer/videoplayer.page.dart';
 
 void main() => runApp(const VideoPlayerApp());
 

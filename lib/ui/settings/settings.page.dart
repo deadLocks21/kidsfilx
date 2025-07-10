@@ -5,8 +5,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kidflix/presentation/settings/change_password/settings_change_password.page.dart';
-import 'package:kidflix/presentation/settings/source/settings_source.dart';
+import 'package:kidflix/ui/settings/change_password/settings_change_password.page.dart';
+import 'package:kidflix/ui/settings/source/settings_source.dart';
 
 class SettingsPage extends StatefulWidget {
   final Function(String) onCodeChanged;

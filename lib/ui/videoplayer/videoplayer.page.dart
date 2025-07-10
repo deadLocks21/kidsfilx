@@ -4,13 +4,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:kidflix/presentation/settings/settings.page.dart';
+import 'package:kidflix/ui/settings/settings.page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
-import './services/app_lock.service.dart';
+import 'services/app_lock.service.dart';
 
 class VideoplayerPage extends StatefulWidget {
   const VideoplayerPage({super.key});
