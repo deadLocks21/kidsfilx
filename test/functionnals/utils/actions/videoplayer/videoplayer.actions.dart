@@ -13,6 +13,11 @@ class VideoplayerActions extends ActionsInterface {
   // ignore: unused_field
   final VideoplayerFinder _finder;
 
+  SettingsActions goToSettings() {
+    addCommand(GoToSettingsCommand(_tester));
+    return navigation.settings..commands.addAll(commands);
+  }
+
   VideoplayerActions expectEpisodeIsSelected(String episode) {
     addCommand(ExpectEpisodeIsSelectedCommand(_tester, episode));
     return this;

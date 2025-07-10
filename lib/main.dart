@@ -850,7 +850,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   Center(
                     child: AspectRatio(
                       aspectRatio: _controller.value.aspectRatio,
-                      child: VideoPlayer(_controller, key: const Key('videoplayer_video')),
+                      child: VideoPlayer(
+                        _controller,
+                        key: const Key('videoplayer_video'),
+                      ),
                     ),
                   ),
                   // Titre avec padding adaptatif
@@ -1090,6 +1093,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     MainAxisAlignment.spaceEvenly,
                                 children: [
                                   _netflixAction(
+                                    const Key('videoplayer_episodes_button'),
                                     Icons.video_library,
                                     'Épisodes',
                                     () {
@@ -1098,6 +1102,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     },
                                   ),
                                   _netflixAction(
+                                    const Key('videoplayer_settings_button'),
                                     Icons.settings,
                                     'Paramètres',
                                     () {
@@ -1106,6 +1111,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     },
                                   ),
                                   _netflixAction(
+                                    const Key('videoplayer_lock_button'),
                                     _isLocked ? Icons.lock : Icons.lock_open,
                                     _isLocked ? 'Vérouiller' : 'Dévérouiller',
                                     () async {
@@ -1152,6 +1158,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                     },
                                   ),
                                   _netflixAction(
+                                    const Key('videoplayer_next_button'),
                                     Icons.skip_next,
                                     'Suivant',
                                     () {
@@ -1176,7 +1183,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  Widget _netflixAction(IconData icon, String label, VoidCallback action) {
+  Widget _netflixAction(
+    Key key,
+    IconData icon,
+    String label,
+    VoidCallback action,
+  ) {
     return SizedBox(
       width: 92,
       child: GestureDetector(
@@ -1188,6 +1200,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             Icon(icon, color: Colors.white, size: 24),
             const SizedBox(height: 4),
             Text(
+              key: key,
               label,
               style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
@@ -1555,6 +1568,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 24),
                   // Form fields
                   TextField(
+                    key: const Key('settings_modal_add_source_url_input'),
                     controller: urlController,
                     style: const TextStyle(color: Colors.white, fontSize: 16),
                     decoration: InputDecoration(
@@ -1670,6 +1684,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
+                              key: Key('settings_modal_add_source_url_check_message'),
                               _urlCheckMessage,
                               style: TextStyle(
                                 color: _isUrlValid ? Colors.green : Colors.red,
@@ -1707,6 +1722,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
+                          key: const Key('settings_modal_add_source_add_button'),
                           onPressed:
                               (urlController.text.isNotEmpty &&
                                   _isUrlValid &&
@@ -1928,7 +1944,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.grey[900],
-        title: const Text('Paramètres', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Paramètres',
+          key: Key('settings_title'),
+          style: TextStyle(color: Colors.white),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
@@ -1988,6 +2008,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           _buildSection('Sources', [
             ListTile(
+              key: const Key('settings_add_source_button'),
               leading: const Icon(Icons.add, color: Colors.white),
               title: const Text(
                 'Ajouter une source',

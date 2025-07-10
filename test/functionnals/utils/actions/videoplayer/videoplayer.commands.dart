@@ -67,3 +67,17 @@ class ExpectPlayerIsNotPlayingCommand extends CommandInterface {
     expect(video.controller.value.isPlaying, isFalse);
   }
 }
+
+class GoToSettingsCommand extends CommandInterface {
+  GoToSettingsCommand(this.tester)
+    : _finder = VideoplayerFinder(tester);
+
+  final WidgetTester tester;
+  final VideoplayerFinder _finder;
+
+  @override
+  Future<void> execute() async {
+    await tester.tap(_finder.settingsButtonFinder);
+    await tester.pumpAndSettle();
+  }
+}

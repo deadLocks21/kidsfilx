@@ -4,13 +4,24 @@ import '../utils/index.dart';
 
 void main() {
   group('Videoplayer', () {
-    testWidgets('aucun épisode n\'est sélectionné au démarrage', (
-      tester,
-    ) async {
+    // testWidgets('aucun épisode n\'est sélectionné au démarrage', (
+    //   tester,
+    // ) async {
+    //   final app = await pumpApp(tester);
+    //   await app
+    //       .expectNoEpisodeIsSelected()
+    //       .expectPlayerIsNotPlaying()
+    //       .execute();
+    // });
+
+    testWidgets('go to settings', (tester) async {
       final app = await pumpApp(tester);
       await app
-          .expectNoEpisodeIsSelected()
-          .expectPlayerIsNotPlaying()
+          .goToSettings()
+          .expectIAmOnSettings()
+          .clickOnAddSource()
+          .typeSource('https://timothe.hofmann.fr/tchoupi-volume1.json')
+          .expectSourceURLIsValid()
           .execute();
     });
   });

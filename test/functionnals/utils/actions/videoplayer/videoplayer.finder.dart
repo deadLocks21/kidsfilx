@@ -14,4 +14,16 @@ class VideoplayerFinder {
   final Finder pauseButtonFinder = find.byKey(
     const Key('videoplayer_pause_button'),
   );
+  final Finder episodesButtonFinder = find.byKey(
+    const Key('videoplayer_episodes_button'),
+  );
+  final Finder settingsButtonFinder = find.byKey(
+    const Key('videoplayer_settings_button'),
+  );
+  final Finder lockButtonFinder = find.byKey(
+    const Key('videoplayer_lock_button'),
+  );
+  final Finder nextButtonFinder = find.byKey(
+    const Key('videoplayer_next_button'),
+  );
 }
