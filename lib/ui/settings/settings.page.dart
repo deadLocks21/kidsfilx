@@ -3,12 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kidflix/core/application/queries/check_source_url_is_valid_query.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kidflix/ui/settings/change_password/settings_change_password.page.dart';
 import 'package:kidflix/ui/settings/source/settings_source.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   final Function(String) onCodeChanged;
   final Function(bool) onShuffleChanged;
 
@@ -19,15 +20,16 @@ class SettingsPage extends StatefulWidget {
   });
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   List<Map<String, dynamic>> _sources = [];
   Timer? _urlCheckTimer;
   bool _isCheckingUrl = false;
   bool _isUrlValid = false;
   String _urlCheckMessage = '';
+  late CheckSourceUrlIsValidQuery checkSourceUrlIsValidQuery;
 
   // Ajout : option Lecture
   bool _autoLoadFirstEpisode = false;
@@ -59,206 +61,31 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  Future<String?> _checkUrl(String url, [Function? setDialogState]) async {
+  Future<String?> _checkUrl(String url, Function setDialogState) async {
     if (url.isEmpty) {
-      if (setDialogState != null) {
-        setDialogState(() {
-          _isCheckingUrl = false;
-          _isUrlValid = false;
-          _urlCheckMessage = '';
-        });
-      } else {
-        setState(() {
-          _isCheckingUrl = false;
-          _isUrlValid = false;
-          _urlCheckMessage = '';
-        });
-      }
+      setDialogState(() {
+        _isCheckingUrl = false;
+        _isUrlValid = false;
+        _urlCheckMessage = '';
+      });
       return null;
     }
 
-    if (setDialogState != null) {
-      setDialogState(() {
-        _isCheckingUrl = true;
-        _isUrlValid = false;
-        _urlCheckMessage = 'Vérification en cours...';
-      });
-    } else {
-      setState(() {
-        _isCheckingUrl = true;
-        _isUrlValid = false;
-        _urlCheckMessage = 'Vérification en cours...';
-      });
-    }
+    setDialogState(() {
+      _isCheckingUrl = true;
+      _isUrlValid = false;
+      _urlCheckMessage = 'Vérification en cours...';
+    });
 
-    try {
-      final response = await http
-          .get(
-            Uri.parse(url),
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; KidsVideoPlayer/1.0)',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
+    final result = await checkSourceUrlIsValidQuery(url);
 
-      if (response.statusCode == 200) {
-        final contentType = response.headers['content-type'] ?? '';
+    setDialogState(() {
+      _isCheckingUrl = false;
+      _isUrlValid = result.isValid;
+      _urlCheckMessage = result.message;
+    });
 
-        // Vérifier si c'est du JSON
-        if (contentType.contains('application/json') ||
-            response.body.trim().startsWith('{')) {
-          try {
-            final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-
-            // Vérifier la structure attendue
-            if (jsonData.containsKey('name') &&
-                jsonData.containsKey('data') &&
-                jsonData['data'] is List) {
-              final dataList = jsonData['data'] as List;
-              final sourceName = jsonData['name'] as String?;
-
-              if (dataList.isNotEmpty) {
-                // Vérifier que chaque élément de data a name et url
-                bool isValidFormat = true;
-                for (var item in dataList) {
-                  if (item is Map<String, dynamic>) {
-                    if (!item.containsKey('name') || !item.containsKey('url')) {
-                      isValidFormat = false;
-                      break;
-                    }
-                  } else {
-                    isValidFormat = false;
-                    break;
-                  }
-                }
-
-                if (isValidFormat) {
-                  if (setDialogState != null) {
-                    setDialogState(() {
-                      _isCheckingUrl = false;
-                      _isUrlValid = true;
-                      _urlCheckMessage =
-                          'Source valide - ${dataList.length} épisode(s) détecté(s)';
-                    });
-                  } else {
-                    setState(() {
-                      _isCheckingUrl = false;
-                      _isUrlValid = true;
-                      _urlCheckMessage =
-                          'Source valide - ${dataList.length} épisode(s) détecté(s)';
-                    });
-                  }
-                  return sourceName;
-                } else {
-                  if (setDialogState != null) {
-                    setDialogState(() {
-                      _isCheckingUrl = false;
-                      _isUrlValid = false;
-                      _urlCheckMessage =
-                          'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
-                    });
-                  } else {
-                    setState(() {
-                      _isCheckingUrl = false;
-                      _isUrlValid = false;
-                      _urlCheckMessage =
-                          'Format JSON invalide - Structure attendue: {name, data: [{name, url}]}';
-                    });
-                  }
-                }
-              } else {
-                if (setDialogState != null) {
-                  setDialogState(() {
-                    _isCheckingUrl = false;
-                    _isUrlValid = false;
-                    _urlCheckMessage = 'Source vide - Aucun épisode trouvé';
-                  });
-                } else {
-                  setState(() {
-                    _isCheckingUrl = false;
-                    _isUrlValid = false;
-                    _urlCheckMessage = 'Source vide - Aucun épisode trouvé';
-                  });
-                }
-              }
-            } else {
-              if (setDialogState != null) {
-                setDialogState(() {
-                  _isCheckingUrl = false;
-                  _isUrlValid = false;
-                  _urlCheckMessage =
-                      'Format JSON invalide - Champs "name" et "data" requis';
-                });
-              } else {
-                setState(() {
-                  _isCheckingUrl = false;
-                  _isUrlValid = false;
-                  _urlCheckMessage =
-                      'Format JSON invalide - Champs "name" et "data" requis';
-                });
-              }
-            }
-          } catch (e) {
-            if (setDialogState != null) {
-              setDialogState(() {
-                _isCheckingUrl = false;
-                _isUrlValid = false;
-                _urlCheckMessage = 'JSON invalide - Erreur de parsing';
-              });
-            } else {
-              setState(() {
-                _isCheckingUrl = false;
-                _isUrlValid = false;
-                _urlCheckMessage = 'JSON invalide - Erreur de parsing';
-              });
-            }
-          }
-        } else {
-          if (setDialogState != null) {
-            setDialogState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = false;
-              _urlCheckMessage = 'Format non supporté - JSON requis';
-            });
-          } else {
-            setState(() {
-              _isCheckingUrl = false;
-              _isUrlValid = false;
-              _urlCheckMessage = 'Format non supporté - JSON requis';
-            });
-          }
-        }
-      } else {
-        if (setDialogState != null) {
-          setDialogState(() {
-            _isCheckingUrl = false;
-            _isUrlValid = false;
-            _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
-          });
-        } else {
-          setState(() {
-            _isCheckingUrl = false;
-            _isUrlValid = false;
-            _urlCheckMessage = 'Erreur HTTP: ${response.statusCode}';
-          });
-        }
-      }
-    } catch (e) {
-      if (setDialogState != null) {
-        setDialogState(() {
-          _isCheckingUrl = false;
-          _isUrlValid = false;
-          _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
-        });
-      } else {
-        setState(() {
-          _isCheckingUrl = false;
-          _isUrlValid = false;
-          _urlCheckMessage = 'Impossible d\'accéder à l\'URL';
-        });
-      }
-    }
-    return null;
+    return result.sourceName;
   }
 
   Future<void> _loadSources() async {
@@ -381,7 +208,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                          color: _isUrlValid ? Colors.green : Colors.red,
+                          color: _isCheckingUrl
+                              ? Colors.white
+                              : _isUrlValid
+                              ? Colors.green
+                              : Colors.red,
                           width: 2,
                         ),
                       ),
@@ -405,6 +236,8 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                               ),
                             )
+                          : _isCheckingUrl
+                          ? const Icon(Icons.local_dining, color: Colors.white)
                           : _isUrlValid
                           ? const Icon(Icons.check_circle, color: Colors.green)
                           : urlController.text.isNotEmpty
@@ -461,12 +294,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: _isUrlValid
+                        color: _isCheckingUrl
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : _isUrlValid
                             ? Colors.green.withValues(alpha: 0.1)
                             : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _isUrlValid
+                          color: _isCheckingUrl
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : _isUrlValid
                               ? Colors.green.withValues(alpha: 0.3)
                               : Colors.red.withValues(alpha: 0.3),
                         ),
@@ -474,8 +311,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: Row(
                         children: [
                           Icon(
-                            _isUrlValid ? Icons.check_circle : Icons.info,
-                            color: _isUrlValid ? Colors.green : Colors.red,
+                            _isCheckingUrl
+                                ? Icons.local_dining
+                                : _isUrlValid
+                                ? Icons.check_circle
+                                : Icons.info,
+                            color: _isCheckingUrl
+                                ? Colors.white
+                                : _isUrlValid
+                                ? Colors.green
+                                : Colors.red,
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -486,7 +331,11 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               _urlCheckMessage,
                               style: TextStyle(
-                                color: _isUrlValid ? Colors.green : Colors.red,
+                                color: _isCheckingUrl
+                                    ? Colors.white
+                                    : _isUrlValid
+                                    ? Colors.green
+                                    : Colors.red,
                                 fontSize: 12,
                               ),
                             ),
@@ -741,6 +590,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    checkSourceUrlIsValidQuery = ref.watch(checkSourceUrlIsValidQueryProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
