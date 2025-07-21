@@ -21,4 +21,17 @@ class SettingsActions extends ActionsInterface {
     addCommand(ClickOnAddSourceCommand(_tester));
     return navigation.settingsModalAddSource..commands.addAll(commands);
   }
+
+  SettingsActions expectSourceDoesNotExist(
+    String sourceName,
+    String sourceUrl,
+  ) {
+    addCommand(ExpectSourceDoesNotExistCommand(_tester, sourceName, sourceUrl));
+    return this;
+  }
+
+  SettingsActions expectSourceIsAdded(String sourceName, String sourceUrl) {
+    addCommand(ExpectSourceIsAddedCommand(_tester, sourceName, sourceUrl));
+    return this;
+  }
 }
