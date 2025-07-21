@@ -4,6 +4,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
+import 'package:kidflix/core/domain/model/source.dart';
 import 'package:kidflix/ui/settings/settings.page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,14 +15,14 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'services/app_lock.service.dart';
 
-class VideoplayerPage extends StatefulWidget {
+class VideoplayerPage extends ConsumerStatefulWidget {
   const VideoplayerPage({super.key});
 
   @override
-  State<VideoplayerPage> createState() => _VideoplayerPageState();
+  ConsumerState<VideoplayerPage> createState() => _VideoplayerPageState();
 }
 
-class _VideoplayerPageState extends State<VideoplayerPage> {
+class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   late VideoPlayerController _controller;
   late Future<void> _initializeVideoPlayerFuture;
   Timer? _timer;
@@ -29,7 +32,7 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
   bool _showUI = true;
   final TextEditingController _codeController = TextEditingController();
   String _unlockCode = "1234";
-  List<Map<String, dynamic>> _sources = [];
+  List<Source> _sources = [];
   Map<String, dynamic>? _currentSource;
   Map<String, dynamic>? _currentEpisode;
   List<Map<String, dynamic>> _downloadedEpisodes = [];
@@ -111,15 +114,10 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
   }
 
   Future<void> _loadSources() async {
-    final prefs = await SharedPreferences.getInstance();
-    final sourcesJson = prefs.getStringList('video_sources') ?? [];
+    final getAllSourcesQuery = ref.read(getAllSourcesQueryProvider);
+    final sources = await getAllSourcesQuery();
     setState(() {
-      _sources = sourcesJson.map((json) {
-        final Map<String, dynamic> source = Map<String, dynamic>.from(
-          jsonDecode(json) as Map,
-        );
-        return source;
-      }).toList();
+      _sources = sources;
     });
   }
 
@@ -129,11 +127,11 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
     for (final source in _sources) {
       final prefs = await SharedPreferences.getInstance();
       final downloadedJson =
-          prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+          prefs.getStringList('downloaded_episodes_${source.name}') ?? [];
       final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
 
       // Charger les fichiers téléchargés
-      final filesJson = prefs.getString('downloaded_files_${source['name']}');
+      final filesJson = prefs.getString('downloaded_files_${source.name}');
       Map<int, String> downloadedFiles = {};
       if (filesJson != null) {
         final Map<String, dynamic> filesMap = jsonDecode(filesJson);
@@ -144,7 +142,7 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
 
       // Charger les métadonnées sauvegardées
       final metadataJson = prefs.getString(
-        'episodes_metadata_${source['name']}',
+        'episodes_metadata_${source.name}',
       );
       Map<int, Map<String, dynamic>> episodesMetadata = {};
       if (metadataJson != null) {
@@ -165,9 +163,13 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
             final file = File(localFile);
             if (await file.exists()) {
               allDownloaded.add({
-                'source': source,
+                'source': {
+                  'name': source.name,
+                  'url': source.url,
+                  'episodeCount': source.episodeCount,
+                },
                 'episode': episodeMetadata,
-                'sourceName': source['name'],
+                'sourceName': source.name,
                 'episodeName': episodeMetadata['name'] ?? 'Épisode $index',
                 'url': localFile, // Utiliser le fichier local
                 'localFile': true,
@@ -196,10 +198,10 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
     for (final source in _sources) {
       final prefs = await SharedPreferences.getInstance();
       final downloadedJson =
-          prefs.getStringList('downloaded_episodes_${source['name']}') ?? [];
+          prefs.getStringList('downloaded_episodes_${source.name}') ?? [];
       final downloadedIndices = downloadedJson.map((e) => int.parse(e)).toSet();
 
-      final filesJson = prefs.getString('downloaded_files_${source['name']}');
+      final filesJson = prefs.getString('downloaded_files_${source.name}');
       Map<int, String> downloadedFiles = {};
       if (filesJson != null) {
         final Map<String, dynamic> filesMap = jsonDecode(filesJson);
@@ -226,7 +228,7 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
       if (validIndices.length != downloadedIndices.length) {
         final validIndicesList = validIndices.map((e) => e.toString()).toList();
         await prefs.setStringList(
-          'downloaded_episodes_${source['name']}',
+          'downloaded_episodes_${source.name}',
           validIndicesList,
         );
 
@@ -234,7 +236,7 @@ class _VideoplayerPageState extends State<VideoplayerPage> {
           validFiles.map((key, value) => MapEntry(key.toString(), value)),
         );
         await prefs.setString(
-          'downloaded_files_${source['name']}',
+          'downloaded_files_${source.name}',
           validFilesJson,
         );
       }

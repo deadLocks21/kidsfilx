@@ -5,6 +5,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/application/queries/check_source_url_is_valid_query.dart';
+import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
+import 'package:kidflix/core/application/queries/save_all_sources_query.dart';
+import 'package:kidflix/core/domain/model/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kidflix/ui/settings/change_password/settings_change_password.page.dart';
 import 'package:kidflix/ui/settings/source/settings_source.dart';
@@ -24,7 +27,7 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  List<Map<String, dynamic>> _sources = [];
+  List<Source> _sources = [];
   Timer? _urlCheckTimer;
   bool _isCheckingUrl = false;
   bool _isUrlValid = false;
@@ -89,15 +92,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _loadSources() async {
-    final prefs = await SharedPreferences.getInstance();
-    final sourcesJson = prefs.getStringList('video_sources') ?? [];
+    final getAllSourcesQuery = ref.read(getAllSourcesQueryProvider);
+    final sources = await getAllSourcesQuery();
     setState(() {
-      _sources = sourcesJson.map((json) {
-        final Map<String, dynamic> source = Map<String, dynamic>.from(
-          jsonDecode(json) as Map,
-        );
-        return source;
-      }).toList();
+      _sources = sources;
     });
   }
 
@@ -135,9 +133,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _saveSources() async {
-    final prefs = await SharedPreferences.getInstance();
-    final sourcesJson = _sources.map((source) => jsonEncode(source)).toList();
-    await prefs.setStringList('video_sources', sourcesJson);
+    final saveAllSourcesQuery = ref.read(saveAllSourcesQueryProvider);
+    await saveAllSourcesQuery(_sources);
   }
 
   void _addSource() {
@@ -379,10 +376,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   detectedSourceName != null)
                               ? () {
                                   setState(() {
-                                    _sources.add({
-                                      'name': detectedSourceName!,
-                                      'url': urlController.text,
-                                    });
+                                    _sources.add(Source(
+                                      name: detectedSourceName!,
+                                      url: urlController.text,
+                                      episodeCount: 0,
+                                    ));
                                   });
                                   _saveSources();
                                   Navigator.of(context).pop();
@@ -429,15 +427,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _removeSource(int index) async {
     final source = _sources[index];
-    final sourceName = source['name'] as String?;
+    final sourceName = source.name;
 
-    if (sourceName != null) {
-      // Supprimer tous les fichiers téléchargés pour cette source
-      await _deleteAllEpisodesForSource(sourceName);
+    // Supprimer tous les fichiers téléchargés pour cette source
+    await _deleteAllEpisodesForSource(sourceName);
 
-      // Supprimer toutes les données associées à cette source
-      await _deleteSourceData(sourceName);
-    }
+    // Supprimer toutes les données associées à cette source
+    await _deleteSourceData(sourceName);
 
     setState(() {
       _sources.removeAt(index);
@@ -512,7 +508,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   void _showDeleteConfirmation(int index) {
     final source = _sources[index];
-    final sourceName = source['name'] as String? ?? 'Source ${index + 1}';
+    final sourceName = source.name;
 
     showDialog(
       context: context,
@@ -679,13 +675,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               return ListTile(
                 leading: const Icon(Icons.link, color: Colors.white),
                 title: Text(
-                  source['name'] ?? 'Source ${index + 1}',
+                  source.name,
                   style: const TextStyle(color: Colors.white),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 subtitle: Text(
-                  source['url'] ?? '',
+                  source.url,
                   style: const TextStyle(color: Colors.white70),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -702,7 +698,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) =>
-                                SettingsSourcePage(source: source),
+                                SettingsSourcePage(source: {
+                                  'name': source.name,
+                                  'url': source.url,
+                                  'episodeCount': source.episodeCount,
+                                }),
                           ),
                         );
                       },
