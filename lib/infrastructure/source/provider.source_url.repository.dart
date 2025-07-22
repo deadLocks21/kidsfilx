@@ -12,5 +12,5 @@ SourceUrlRepository sourceUrlRepository(Ref ref) {
     return HttpSourceRepository();
   }
 
-  return InMemorySourceRepository();
+  return InMemorySourceUrlRepository();
 }

@@ -3,11 +3,11 @@ import 'dart:math';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:kidflix/core/domain/services/source_url.repository.dart';
 
-class InMemorySourceRepository implements SourceUrlRepository {
+class InMemorySourceUrlRepository implements SourceUrlRepository {
   final List<Source> _sources = [];
   final int _delay;
 
-  InMemorySourceRepository({List<Source>? initialSources, int delay = 0})
+  InMemorySourceUrlRepository({List<Source>? initialSources, int delay = 0})
     : _delay = delay {
     if (initialSources != null && initialSources.isNotEmpty) {
       _sources.addAll(initialSources);

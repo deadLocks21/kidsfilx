@@ -16,7 +16,7 @@ Future<VideoplayerActions> pumpApp(
       overrides: [
         sourceUrlRepositoryProvider.overrideWith(
           (ref) =>
-              InMemorySourceRepository(initialSources: sources, delay: 200),
+              InMemorySourceUrlRepository(initialSources: sources, delay: 200),
         ),
       ],
       child: const VideoPlayerApp(),
