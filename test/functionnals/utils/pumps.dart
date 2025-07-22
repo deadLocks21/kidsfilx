@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:kidflix/infrastructure/source/in-memory.source.repository.dart';
-import 'package:kidflix/infrastructure/source/in-memory.source_url.repository.dart';
+import 'package:kidflix/infrastructure/source_url/in-memory.source_url.repository.dart';
 import 'package:kidflix/infrastructure/source/provider.source.repository.dart';
-import 'package:kidflix/infrastructure/source/provider.source_url.repository.dart';
+import 'package:kidflix/infrastructure/source_url/provider.source_url.repository.dart';
 import 'package:kidflix/main.dart';
 
 import 'index.dart';

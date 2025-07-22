@@ -9,8 +9,8 @@ import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
 import 'package:kidflix/core/application/queries/save_all_sources_query.dart';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kidflix/ui/settings/change_password/settings_change_password.page.dart';
-import 'package:kidflix/ui/settings/source/settings_source.dart';
+import 'package:kidflix/infrastructure/source_url/ui/settings/change_password/settings_change_password.page.dart';
+import 'package:kidflix/infrastructure/source_url/ui/settings/source/settings_source.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   final Function(String) onCodeChanged;

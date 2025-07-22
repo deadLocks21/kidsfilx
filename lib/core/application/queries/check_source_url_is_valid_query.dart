@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:kidflix/core/domain/services/source_url.repository.dart';
-import 'package:kidflix/infrastructure/source/provider.source_url.repository.dart';
+import 'package:kidflix/infrastructure/source_url/provider.source_url.repository.dart';
 
 part 'check_source_url_is_valid_query.g.dart';
 
