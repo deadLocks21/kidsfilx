@@ -376,11 +376,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                                   detectedSourceName != null)
                               ? () {
                                   setState(() {
-                                    _sources.add(Source(
-                                      name: detectedSourceName!,
-                                      url: urlController.text,
-                                      episodeCount: 0,
-                                    ));
+                                    _sources.add(
+                                      Source(
+                                        name: detectedSourceName!,
+                                        url: urlController.text,
+                                        episodeCount: 0,
+                                      ),
+                                    );
                                   });
                                   _saveSources();
                                   Navigator.of(context).pop();
@@ -429,26 +431,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final source = _sources[index];
     final sourceName = source.name;
 
+    setState(() {
+      _sources.removeAt(index);
+    });
+
     // Supprimer tous les fichiers téléchargés pour cette source
     await _deleteAllEpisodesForSource(sourceName);
 
     // Supprimer toutes les données associées à cette source
     await _deleteSourceData(sourceName);
 
-    setState(() {
-      _sources.removeAt(index);
-    });
     _saveSources();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Source "$sourceName" et tous ses épisodes supprimés'),
-          backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
   }
 
   Future<void> _deleteAllEpisodesForSource(String sourceName) async {
@@ -564,6 +557,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text(
+                key: Key(
+                  'settings_modal_validate_source_deletion_cancel_button',
+                ),
                 'Annuler',
                 style: TextStyle(color: Colors.white70),
               ),
@@ -574,6 +570,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _removeSource(index);
               },
               child: const Text(
+                key: Key(
+                  'settings_modal_validate_source_deletion_delete_source_button',
+                ),
                 'Supprimer',
                 style: TextStyle(color: Colors.red),
               ),
@@ -673,9 +672,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               final index = entry.key;
               final source = entry.value;
               return ListTile(
+                key: Key('settings_source_tile'),
                 leading: const Icon(Icons.link, color: Colors.white),
                 title: Text(
                   source.name,
+                  key: Key('settings_source_title'),
                   style: const TextStyle(color: Colors.white),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -697,17 +698,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onPressed: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) =>
-                                SettingsSourcePage(source: {
-                                  'name': source.name,
-                                  'url': source.url,
-                                  'episodeCount': source.episodeCount,
-                                }),
+                            builder: (context) => SettingsSourcePage(
+                              source: {
+                                'name': source.name,
+                                'url': source.url,
+                                'episodeCount': source.episodeCount,
+                              },
+                            ),
                           ),
                         );
                       },
                     ),
                     IconButton(
+                      key: Key('settings_delete_source_button'),
                       icon: const Icon(Icons.delete, color: Colors.red),
                       onPressed: () => _showDeleteConfirmation(index),
                     ),

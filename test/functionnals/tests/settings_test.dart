@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../builders/index.dart';
 import '../utils/index.dart';
 
 void main() {
@@ -38,6 +39,23 @@ void main() {
           .waitFor(250)
           .expectSourceURLIsInvalid()
           .expectAddSourceButtonIsDisabled()
+          .execute();
+    });
+
+    testWidgets('can delete a source', (tester) async {
+      final app = await pumpApp(tester, addedSources: [aSource().build()]);
+      await app
+          .goToSettings()
+          .expectSourceExists(
+            'Tchoupi Volume 1',
+            'https://kidflix.example.com/tchoupi/volume1.json',
+          )
+          .clickOnDeleteSource('Tchoupi Volume 1')
+          .clickOnValidateDelete()
+          .expectSourceIsDeleted(
+            'Tchoupi Volume 1',
+            'https://kidflix.example.com/tchoupi/volume1.json',
+          )
           .execute();
     });
   });

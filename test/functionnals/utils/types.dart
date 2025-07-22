@@ -9,6 +9,8 @@ abstract class NavigationInterface {
 
   dynamic get settingsModalAddSource;
 
+  dynamic get settingsModalValidateSourceDeletion;
+
   dynamic get settingsChangePassword;
 
   dynamic get settingsSource;

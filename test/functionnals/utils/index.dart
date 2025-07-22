@@ -9,6 +9,7 @@ export 'actions/videoplayer/modal/chose_episode/videoplayer_modal_chose_episode.
 export 'actions/videoplayer/modal/unlock/videoplayer_modal_unlock.actions.dart';
 export 'actions/settings/settings.actions.dart';
 export 'actions/settings/modal_add_source/settings_modal_add_source.actions.dart';
+export 'actions/settings/modal_validate_source_deletion/settings_modal_validate_source_deletion.actions.dart';
 export 'actions/settings/change_password/settings_change_password.actions.dart';
 export 'actions/settings/source/settings_source.actions.dart';
 

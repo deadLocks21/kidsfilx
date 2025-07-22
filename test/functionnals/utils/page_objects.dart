@@ -9,6 +9,8 @@ import 'actions/videoplayer/modal/unlock/videoplayer_modal_unlock.actions.dart'
 import 'actions/settings/settings.actions.dart' as settings_actions;
 import 'actions/settings/modal_add_source/settings_modal_add_source.actions.dart'
     as settings_modal_add_source_actions;
+import 'actions/settings/modal_validate_source_deletion/settings_modal_validate_source_deletion.actions.dart'
+    as settings_modal_validate_source_deletion_actions;
 import 'actions/settings/change_password/settings_change_password.actions.dart'
     as settings_change_password_actions;
 import 'actions/settings/source/settings_source.actions.dart'
@@ -47,6 +49,14 @@ class PageObjects implements NavigationInterface {
   settings_modal_add_source_actions.SettingsModalAddSourceActions
   get settingsModalAddSource =>
       settings_modal_add_source_actions.SettingsModalAddSourceActions(
+        this,
+        tester,
+      );
+
+  @override
+  settings_modal_validate_source_deletion_actions.SettingsModalValidateSourceDeletionActions
+  get settingsModalValidateSourceDeletion =>
+      settings_modal_validate_source_deletion_actions.SettingsModalValidateSourceDeletionActions(
         this,
         tester,
       );

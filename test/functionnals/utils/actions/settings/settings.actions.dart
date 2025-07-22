@@ -30,8 +30,24 @@ class SettingsActions extends ActionsInterface {
     return this;
   }
 
-  SettingsActions expectSourceIsAdded(String sourceName, String sourceUrl) {
-    addCommand(ExpectSourceIsAddedCommand(_tester, sourceName, sourceUrl));
+  SettingsActions expectSourceExists(String sourceName, String sourceUrl) {
+    addCommand(ExpectSourceExistsCommand(_tester, sourceName, sourceUrl));
     return this;
+  }
+
+  SettingsModalValidateSourceDeletionActions clickOnDeleteSource(
+    String sourceName,
+  ) {
+    addCommand(ClickOnDeleteSourceCommand(_tester, sourceName));
+    return navigation.settingsModalValidateSourceDeletion
+      ..commands.addAll(commands);
+  }
+
+  SettingsActions expectSourceIsAdded(String sourceName, String sourceUrl) {
+    return expectSourceExists(sourceName, sourceUrl);
+  }
+
+  SettingsActions expectSourceIsDeleted(String sourceName, String sourceUrl) {
+    return expectSourceDoesNotExist(sourceName, sourceUrl);
   }
 }
