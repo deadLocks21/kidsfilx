@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/domain/model/source.dart';
+import 'package:kidflix/infrastructure/source/in-memory.source.repository.dart';
 import 'package:kidflix/infrastructure/source/in-memory.source_url.repository.dart';
+import 'package:kidflix/infrastructure/source/provider.source.repository.dart';
 import 'package:kidflix/infrastructure/source/provider.source_url.repository.dart';
 import 'package:kidflix/main.dart';
 
@@ -9,6 +11,7 @@ import 'index.dart';
 
 Future<VideoplayerActions> pumpApp(
   WidgetTester tester, {
+  List<Source>? addedSources,
   List<Source>? sources,
 }) async {
   await tester.pumpWidget(
@@ -17,6 +20,9 @@ Future<VideoplayerActions> pumpApp(
         sourceUrlRepositoryProvider.overrideWith(
           (ref) =>
               InMemorySourceUrlRepository(initialSources: sources, delay: 200),
+        ),
+        sourceRepositoryProvider.overrideWith(
+          (ref) => InMemorySourceRepository(initialSources: addedSources ?? []),
         ),
       ],
       child: const VideoPlayerApp(),

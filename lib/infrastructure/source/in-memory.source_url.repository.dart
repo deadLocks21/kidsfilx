@@ -9,7 +9,7 @@ class InMemorySourceUrlRepository implements SourceUrlRepository {
 
   InMemorySourceUrlRepository({List<Source>? initialSources, int delay = 0})
     : _delay = delay {
-    if (initialSources != null && initialSources.isNotEmpty) {
+    if (initialSources != null) {
       _sources.addAll(initialSources);
     } else {
       _sources.add(

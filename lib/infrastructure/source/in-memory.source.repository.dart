@@ -5,7 +5,7 @@ class InMemorySourceRepository implements SourceRepository {
   final List<Source> _sources = [];
 
   InMemorySourceRepository({List<Source>? initialSources}) {
-    if (initialSources != null && initialSources.isNotEmpty) {
+    if (initialSources != null) {
       _sources.addAll(initialSources);
     } else {
       // Sources par défaut pour les tests
