@@ -4,9 +4,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kidflix/core/application/commands/save_all_sources_command.dart';
 import 'package:kidflix/core/application/queries/check_source_url_is_valid_query.dart';
 import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
-import 'package:kidflix/core/application/queries/save_all_sources_query.dart';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kidflix/infrastructure/source_url/ui/settings/change_password/settings_change_password.page.dart';
@@ -133,8 +133,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _saveSources() async {
-    final saveAllSourcesQuery = ref.read(saveAllSourcesQueryProvider);
-    await saveAllSourcesQuery(_sources);
+    final saveAllSourcesCommand = ref.read(saveAllSourcesCommandProvider);
+    await saveAllSourcesCommand(_sources);
   }
 
   void _addSource() {

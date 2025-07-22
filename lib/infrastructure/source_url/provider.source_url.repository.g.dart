@@ -52,7 +52,7 @@ final class SourceUrlRepositoryProvider
 }
 
 String _$sourceUrlRepositoryHash() =>
-    r'8a4352afd3177ad55c7c536b8f9dc2dc8b6b7268';
+    r'95f9e9e8ed1459cc9e3317f10ac9052d8d4c3977';
 
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -1,58 +1,58 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'save_all_sources_query.dart';
+part of 'save_all_sources_command.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-@ProviderFor(saveAllSourcesQuery)
-const saveAllSourcesQueryProvider = SaveAllSourcesQueryProvider._();
+@ProviderFor(saveAllSourcesCommand)
+const saveAllSourcesCommandProvider = SaveAllSourcesCommandProvider._();
 
-final class SaveAllSourcesQueryProvider
+final class SaveAllSourcesCommandProvider
     extends
         $FunctionalProvider<
-          SaveAllSourcesQuery,
-          SaveAllSourcesQuery,
-          SaveAllSourcesQuery
+          SaveAllSourcesCommand,
+          SaveAllSourcesCommand,
+          SaveAllSourcesCommand
         >
-    with $Provider<SaveAllSourcesQuery> {
-  const SaveAllSourcesQueryProvider._()
+    with $Provider<SaveAllSourcesCommand> {
+  const SaveAllSourcesCommandProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'saveAllSourcesQueryProvider',
+        name: r'saveAllSourcesCommandProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$saveAllSourcesQueryHash();
+  String debugGetCreateSourceHash() => _$saveAllSourcesCommandHash();
 
   @$internal
   @override
-  $ProviderElement<SaveAllSourcesQuery> $createElement(
+  $ProviderElement<SaveAllSourcesCommand> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  SaveAllSourcesQuery create(Ref ref) {
-    return saveAllSourcesQuery(ref);
+  SaveAllSourcesCommand create(Ref ref) {
+    return saveAllSourcesCommand(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(SaveAllSourcesQuery value) {
+  Override overrideWithValue(SaveAllSourcesCommand value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<SaveAllSourcesQuery>(value),
+      providerOverride: $SyncValueProvider<SaveAllSourcesCommand>(value),
     );
   }
 }
 
-String _$saveAllSourcesQueryHash() =>
-    r'cd601cd5fee492e8d232cbac36194882b636ebdc';
+String _$saveAllSourcesCommandHash() =>
+    r'f54ace919d67136d0226e47305b5e5f436f0ccb4';
 
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
