@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
 import 'package:kidflix/core/application/queries/validate_unlock_code_query.dart';
 import 'package:kidflix/core/domain/model/source.dart';
-import 'package:kidflix/infrastructure/source_url/ui/settings/settings.page.dart';
+import 'package:kidflix/ui/settings/settings.page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
