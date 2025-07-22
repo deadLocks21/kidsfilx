@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
+import 'package:kidflix/core/application/queries/validate_unlock_code_query.dart';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:kidflix/infrastructure/source_url/ui/settings/settings.page.dart';
 import 'package:path_provider/path_provider.dart';
@@ -31,7 +32,6 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   bool _isLocked = false;
   bool _showUI = true;
   final TextEditingController _codeController = TextEditingController();
-  String _unlockCode = "1234";
   List<Source> _sources = [];
   Map<String, dynamic>? _currentSource;
   Map<String, dynamic>? _currentEpisode;
@@ -65,23 +65,7 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
       _onVideoEnd,
     ); // Ajouter un listener pour détecter la fin
     _startTimer();
-    _loadUnlockCode();
     _initAsync();
-  }
-
-  Future<void> _loadUnlockCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _unlockCode = prefs.getString('unlock_code') ?? "1234";
-    });
-  }
-
-  Future<void> _saveUnlockCode(String code) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('unlock_code', code);
-    setState(() {
-      _unlockCode = code;
-    });
   }
 
   Future<bool> _loadAutoLoadOption() async {
@@ -141,9 +125,7 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
       }
 
       // Charger les métadonnées sauvegardées
-      final metadataJson = prefs.getString(
-        'episodes_metadata_${source.name}',
-      );
+      final metadataJson = prefs.getString('episodes_metadata_${source.name}');
       Map<int, Map<String, dynamic>> episodesMetadata = {};
       if (metadataJson != null) {
         final Map<String, dynamic> metadataMap = jsonDecode(metadataJson);
@@ -399,7 +381,12 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   }
 
   void _validateCode() async {
-    if (_codeController.text == _unlockCode) {
+    final validateUnlockCodeQuery = ref.read(validateUnlockCodeQueryProvider);
+    final isValid = await validateUnlockCodeQuery.validateCode(
+      _codeController.text,
+    );
+
+    if (isValid) {
       setState(() {
         _isLocked = false;
       });
@@ -411,8 +398,16 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
         print('Erreur lors de l\'arrêt du lock task: $e');
       }
 
+      if (!mounted) {
+        return;
+      }
+
       Navigator.of(context).pop();
     } else {
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Code incorrect !'),
@@ -441,7 +436,6 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => SettingsPage(
-          onCodeChanged: _saveUnlockCode,
           onShuffleChanged: (bool value) async {
             setState(() {
               _shuffleEpisodes = value;

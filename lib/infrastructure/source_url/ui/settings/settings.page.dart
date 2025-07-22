@@ -13,14 +13,9 @@ import 'package:kidflix/infrastructure/source_url/ui/settings/change_password/se
 import 'package:kidflix/infrastructure/source_url/ui/settings/source/settings_source.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
-  final Function(String) onCodeChanged;
   final Function(bool) onShuffleChanged;
 
-  const SettingsPage({
-    super.key,
-    required this.onCodeChanged,
-    required this.onShuffleChanged,
-  });
+  const SettingsPage({super.key, required this.onShuffleChanged});
 
   @override
   ConsumerState<SettingsPage> createState() => _SettingsPageState();
@@ -644,9 +639,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => SettingsChangeCodePage(
-                      onCodeChanged: widget.onCodeChanged,
-                    ),
+                    builder: (context) => SettingsChangeCodePage(),
                   ),
                 );
               },

@@ -1,32 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kidflix/core/application/commands/update_unlock_code_command.dart';
+import 'package:kidflix/core/application/queries/validate_unlock_code_query.dart';
 
-class SettingsChangeCodePage extends StatefulWidget {
-  final Function(String) onCodeChanged;
-
-  const SettingsChangeCodePage({super.key, required this.onCodeChanged});
+class SettingsChangeCodePage extends ConsumerStatefulWidget {
+  const SettingsChangeCodePage({super.key});
 
   @override
-  State<SettingsChangeCodePage> createState() => _SettingsChangeCodeScreePage();
+  ConsumerState<SettingsChangeCodePage> createState() =>
+      _SettingsChangeCodeScreePage();
 }
 
-class _SettingsChangeCodeScreePage extends State<SettingsChangeCodePage> {
+class _SettingsChangeCodeScreePage
+    extends ConsumerState<SettingsChangeCodePage> {
   final TextEditingController _currentCodeController = TextEditingController();
   final TextEditingController _newCodeController = TextEditingController();
   final TextEditingController _confirmCodeController = TextEditingController();
-  String _currentCode = "1234";
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentCode();
-  }
-
-  Future<void> _loadCurrentCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _currentCode = prefs.getString('unlock_code') ?? "1234";
-    });
   }
 
   @override
@@ -37,9 +30,23 @@ class _SettingsChangeCodeScreePage extends State<SettingsChangeCodePage> {
     super.dispose();
   }
 
-  void _changeCode() {
-    // Vérifier le code actuel
-    if (_currentCodeController.text != _currentCode) {
+  ValidateUnlockCodeQuery get _validateQuery =>
+      ref.read(validateUnlockCodeQueryProvider);
+  UpdateUnlockCodeCommand get _updateCommand =>
+      ref.read(updateUnlockCodeCommandProvider);
+
+  void _changeCode() async {
+    if (!mounted) {
+      return;
+    }
+    final isCurrentCodeValid = await _validateQuery.validateCode(
+      _currentCodeController.text,
+    );
+
+    if (!isCurrentCodeValid) {
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Code actuel incorrect !'),
@@ -53,6 +60,10 @@ class _SettingsChangeCodeScreePage extends State<SettingsChangeCodePage> {
     // Vérifier que le nouveau code fait 4 chiffres
     if (_newCodeController.text.length != 4 ||
         !RegExp(r'^\d{4}$').hasMatch(_newCodeController.text)) {
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -62,11 +73,15 @@ class _SettingsChangeCodeScreePage extends State<SettingsChangeCodePage> {
           duration: Duration(seconds: 2),
         ),
       );
+
       return;
     }
 
     // Vérifier la confirmation
     if (_newCodeController.text != _confirmCodeController.text) {
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Les codes ne correspondent pas !'),
@@ -74,23 +89,48 @@ class _SettingsChangeCodeScreePage extends State<SettingsChangeCodePage> {
           duration: Duration(seconds: 2),
         ),
       );
+
       return;
     }
 
-    // Sauvegarder le nouveau code
-    widget.onCodeChanged(_newCodeController.text);
+    if (!mounted) {
+      return;
+    }
 
-    // Fermer l'écran
-    Navigator.of(context).pop();
+    try {
+      // Utiliser la commande pour mettre à jour le code
+      await _updateCommand.updateCode(
+        _currentCodeController.text,
+        _newCodeController.text,
+      );
 
-    // Afficher un message de succès
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Code modifié avec succès !'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+      if (!mounted) {
+        return;
+      }
+
+      // Fermer l'écran
+      Navigator.of(context).pop();
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Code modifié avec succès !'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de la modification du code: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
