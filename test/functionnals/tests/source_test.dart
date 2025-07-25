@@ -6,7 +6,7 @@ import '../utils/index.dart';
 void main() {
   setupTestEnvironment();
 
-  group('Settings', () {
+  group('Add/delete source', () {
     testWidgets('add a valid source', (tester) async {
       final app = await pumpApp(tester);
       await app
