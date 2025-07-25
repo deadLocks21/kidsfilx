@@ -592,6 +592,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           style: TextStyle(color: Colors.white),
         ),
         leading: IconButton(
+          key: const Key('settings_go_back_button'),
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -644,6 +645,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 );
               },
               Icons.lock,
+              key: const Key('settings_change_password_button'),
             ),
           ]),
           const SizedBox(height: 24),
@@ -745,9 +747,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     String title,
     String subtitle,
     VoidCallback onTap,
-    IconData icon,
-  ) {
+    IconData icon, {
+    Key? key,
+  }) {
     return ListTile(
+      key: key,
       leading: Icon(icon, color: Colors.white),
       title: Text(title, style: const TextStyle(color: Colors.white)),
       subtitle: Text(subtitle, style: const TextStyle(color: Colors.white70)),

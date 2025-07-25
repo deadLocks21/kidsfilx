@@ -17,6 +17,12 @@ class SettingsFinder {
   final Finder deleteSourceButtonFinder = find.byKey(
     const Key('settings_delete_source_button'),
   );
+  final Finder changePasswordButtonFinder = find.byKey(
+    const Key('settings_change_password_button'),
+  );
+  final Finder goBackButtonFinder = find.byKey(
+    const Key('settings_go_back_button'),
+  );
 
   Finder deleteSourceButtonForSource(String sourceName) {
     final allSourceTiles = find.byKey(const Key('settings_source_tile'));

@@ -69,8 +69,7 @@ class ExpectPlayerIsNotPlayingCommand extends CommandInterface {
 }
 
 class GoToSettingsCommand extends CommandInterface {
-  GoToSettingsCommand(this.tester)
-    : _finder = VideoplayerFinder(tester);
+  GoToSettingsCommand(this.tester) : _finder = VideoplayerFinder(tester);
 
   final WidgetTester tester;
   final VideoplayerFinder _finder;
@@ -79,5 +78,59 @@ class GoToSettingsCommand extends CommandInterface {
   Future<void> execute() async {
     await tester.tap(_finder.settingsButtonFinder);
     await tester.pumpAndSettle();
+  }
+}
+
+class ClickLockButtonCommand extends CommandInterface {
+  ClickLockButtonCommand(this.tester) : _finder = VideoplayerFinder(tester);
+
+  final WidgetTester tester;
+  final VideoplayerFinder _finder;
+
+  @override
+  Future<void> execute() async {
+    await tester.tap(_finder.lockButtonFinder);
+    await tester.pumpAndSettle();
+  }
+}
+
+class ClickUnlockButtonCommand extends CommandInterface {
+  ClickUnlockButtonCommand(this.tester) : _finder = VideoplayerFinder(tester);
+
+  final WidgetTester tester;
+  final VideoplayerFinder _finder;
+
+  @override
+  Future<void> execute() async {
+    await tester.tap(_finder.unlockButtonFinder);
+    await tester.pumpAndSettle();
+  }
+}
+
+class ExpectPlayerIsLockedCommand extends CommandInterface {
+  ExpectPlayerIsLockedCommand(this.tester)
+    : _finder = VideoplayerFinder(tester);
+
+  final WidgetTester tester;
+  final VideoplayerFinder _finder;
+
+  @override
+  Future<void> execute() async {
+    expect(_finder.lockButtonFinder, findsNothing);
+    expect(_finder.unlockButtonFinder, findsOneWidget);
+  }
+}
+
+class ExpectPlayerIsUnlockedCommand extends CommandInterface {
+  ExpectPlayerIsUnlockedCommand(this.tester)
+    : _finder = VideoplayerFinder(tester);
+
+  final WidgetTester tester;
+  final VideoplayerFinder _finder;
+
+  @override
+  Future<void> execute() async {
+    expect(_finder.lockButtonFinder, findsOneWidget);
+    expect(_finder.unlockButtonFinder, findsNothing);
   }
 }

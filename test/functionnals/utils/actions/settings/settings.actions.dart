@@ -50,4 +50,14 @@ class SettingsActions extends ActionsInterface {
   SettingsActions expectSourceIsDeleted(String sourceName, String sourceUrl) {
     return expectSourceDoesNotExist(sourceName, sourceUrl);
   }
+
+  SettingsChangePasswordActions clickOnChangePassword() {
+    addCommand(ClickOnChangePasswordCommand(_tester));
+    return navigation.settingsChangePassword..commands.addAll(commands);
+  }
+
+  VideoplayerActions clickOnGoBack() {
+    addCommand(ClickOnGoBackCommand(_tester));
+    return navigation.videoplayer..commands.addAll(commands);
+  }
 }

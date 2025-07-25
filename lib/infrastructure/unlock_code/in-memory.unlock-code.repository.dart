@@ -1,10 +1,23 @@
 import 'package:kidflix/core/domain/services/unlock-code.repository.dart';
 
 class InMemoryUnlockCodeRepository implements UnlockCodeRepository {
-  InMemoryUnlockCodeRepository({String? initialCode})
-    : _currentCode = initialCode ?? "1234";
+  InMemoryUnlockCodeRepository._({String? initialCode}) {
+    if (initialCode != null) {
+      _currentCode = initialCode;
+    }
+  }
 
-  String _currentCode;
+  static InMemoryUnlockCodeRepository? _instance;
+  static String _currentCode = "1234";
+
+  factory InMemoryUnlockCodeRepository({String? initialCode}) {
+    _instance ??= InMemoryUnlockCodeRepository._(initialCode: initialCode);
+    return _instance!;
+  }
+
+  static void reset() {
+    _instance = null;
+  }
 
   @override
   Future<bool> isValid(String code) async {

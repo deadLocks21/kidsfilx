@@ -8,7 +8,6 @@ class VideoplayerActions extends ActionsInterface {
   VideoplayerActions(super.navigation, this._tester)
     : _finder = VideoplayerFinder(_tester);
 
-  // ignore: unused_field
   final WidgetTester _tester;
   // ignore: unused_field
   final VideoplayerFinder _finder;
@@ -36,5 +35,32 @@ class VideoplayerActions extends ActionsInterface {
   VideoplayerActions expectPlayerIsNotPlaying() {
     addCommand(ExpectPlayerIsNotPlayingCommand(_tester));
     return this;
+  }
+
+  VideoplayerActions clickLockButton() {
+    addCommand(ClickLockButtonCommand(_tester));
+    return this;
+  }
+
+  VideoplayerModalUnlockActions clickUnlockButton() {
+    addCommand(ClickUnlockButtonCommand(_tester));
+    return navigation.videoplayerModalUnlock..commands.addAll(commands);
+  }
+
+  VideoplayerActions expectPlayerIsLocked() {
+    addCommand(ExpectPlayerIsLockedCommand(_tester));
+    return this;
+  }
+
+  VideoplayerActions expectPlayerIsUnlocked() {
+    addCommand(ExpectPlayerIsUnlockedCommand(_tester));
+    return this;
+  }
+
+  VideoplayerModalUnlockActions unlockWithCode(String code) {
+    addCommand(ClickLockButtonCommand(_tester));
+    return navigation.videoplayerModalUnlock
+      ..typeCode(code)
+      ..clickUnlock();
   }
 }

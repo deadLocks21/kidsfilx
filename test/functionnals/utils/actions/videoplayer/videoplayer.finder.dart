@@ -23,6 +23,9 @@ class VideoplayerFinder {
   final Finder lockButtonFinder = find.byKey(
     const Key('videoplayer_lock_button'),
   );
+  final Finder unlockButtonFinder = find.byKey(
+    const Key('videoplayer_unlock_button'),
+  );
   final Finder nextButtonFinder = find.byKey(
     const Key('videoplayer_next_button'),
   );

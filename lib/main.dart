@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/shared/dependancy_injection.dart';
-import 'package:kidflix/infrastructure/source_url/ui/videoplayer/videoplayer.page.dart';
+import 'package:kidflix/ui/videoplayer/videoplayer.page.dart';
 
 void main() {
   if (!kDebugMode) {

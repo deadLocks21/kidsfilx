@@ -110,15 +110,13 @@ class _SettingsChangeCodeScreePage
 
       // Fermer l'écran
       Navigator.of(context).pop();
-
-      // Afficher un message de succès
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Code modifié avec succès !'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text('Code modifié avec succès !'),
+      //     backgroundColor: Colors.green,
+      //     duration: Duration(seconds: 2),
+      //   ),
+      // );
     } catch (e) {
       if (!mounted) {
         return;
@@ -144,6 +142,7 @@ class _SettingsChangeCodeScreePage
           style: TextStyle(color: Colors.white),
         ),
         leading: IconButton(
+          key: const Key('settings_change_password_back_button'),
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -156,6 +155,7 @@ class _SettingsChangeCodeScreePage
             const SizedBox(height: 24),
             // Code actuel
             TextField(
+              key: const Key('settings_change_password_current_code_field'),
               controller: _currentCodeController,
               keyboardType: TextInputType.number,
               maxLength: 4,
@@ -181,6 +181,7 @@ class _SettingsChangeCodeScreePage
             const SizedBox(height: 24),
             // Nouveau code
             TextField(
+              key: const Key('settings_change_password_new_code_field'),
               controller: _newCodeController,
               keyboardType: TextInputType.number,
               maxLength: 4,
@@ -206,6 +207,7 @@ class _SettingsChangeCodeScreePage
             const SizedBox(height: 24),
             // Confirmation du nouveau code
             TextField(
+              key: const Key('settings_change_password_confirm_code_field'),
               controller: _confirmCodeController,
               keyboardType: TextInputType.number,
               maxLength: 4,
@@ -231,6 +233,7 @@ class _SettingsChangeCodeScreePage
             const SizedBox(height: 32),
             // Bouton de validation
             ElevatedButton(
+              key: const Key('settings_change_password_submit_button'),
               onPressed: _changeCode,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,

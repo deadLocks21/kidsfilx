@@ -335,6 +335,7 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
               ),
               const SizedBox(height: 16),
               TextField(
+                key: const Key('unlock_code_input'),
                 controller: _codeController,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
@@ -386,28 +387,8 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
       _codeController.text,
     );
 
-    if (isValid) {
-      setState(() {
-        _isLocked = false;
-      });
-
-      // Essayer d'arrêter le lock task natif, mais ne pas bloquer si ça échoue
-      try {
-        await AppLockService.stopLockTask();
-      } catch (e) {
-        print('Erreur lors de l\'arrêt du lock task: $e');
-      }
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.of(context).pop();
-    } else {
-      if (!mounted) {
-        return;
-      }
-
+    if (!isValid) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Code incorrect !'),
@@ -416,7 +397,19 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
         ),
       );
       _codeController.clear();
+      return;
     }
+
+    setState(() {
+      _isLocked = false;
+    });
+
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pop();
+
+    AppLockService.stopLockTask();
   }
 
   void _openSettings() async {
@@ -1091,53 +1084,27 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
                                       _openSettings();
                                     },
                                   ),
-                                  _netflixAction(
-                                    const Key('videoplayer_lock_button'),
-                                    _isLocked ? Icons.lock : Icons.lock_open,
-                                    _isLocked ? 'Vérouiller' : 'Dévérouiller',
-                                    () async {
-                                      if (_isLocked) {
+                                  if (_isLocked)
+                                    _netflixAction(
+                                      const Key('videoplayer_unlock_button'),
+                                      Icons.lock,
+                                      'Vérouiller',
+                                      () {
                                         _showUnlockModal();
-                                      } else {
-                                        final success =
-                                            await AppLockService.startLockTask();
-                                        if (success) {
-                                          setState(() {
-                                            _isLocked = true;
-                                          });
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Mode verrouillage système activé',
-                                              ),
-                                              backgroundColor: Colors.green,
-                                              duration: Duration(seconds: 2),
-                                            ),
-                                          );
-                                        } else {
-                                          // Fallback: verrouillage logiciel si le verrouillage système échoue
-                                          setState(() {
-                                            _isLocked = true;
-                                          });
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                AppLockService.isNativeAvailable
-                                                    ? 'Mode verrouillage logiciel activé'
-                                                    : 'Mode verrouillage activé (système non disponible)',
-                                              ),
-                                              backgroundColor: Colors.orange,
-                                              duration: Duration(seconds: 2),
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                  ),
+                                      },
+                                    ),
+                                  if (!_isLocked)
+                                    _netflixAction(
+                                      const Key('videoplayer_lock_button'),
+                                      Icons.lock_open,
+                                      'Dévérouiller',
+                                      () {
+                                        setState(() {
+                                          _isLocked = true;
+                                        });
+                                        AppLockService.startLockTask();
+                                      },
+                                    ),
                                   _netflixAction(
                                     const Key('videoplayer_next_button'),
                                     Icons.skip_next,
