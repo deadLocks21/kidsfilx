@@ -75,4 +75,6 @@ void main() {
         .expectPlayerIsLocked()
         .execute();
   });
+
+  // TODO: Test what lock mode does not allow you to do.
 }
