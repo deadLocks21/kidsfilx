@@ -7,12 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kidflix/core/application/queries/get_all_sources_query.dart';
 import 'package:kidflix/core/application/queries/validate_unlock_code_query.dart';
+import 'package:kidflix/core/application/queries/get_thumbnail_query.dart';
+import 'package:kidflix/core/application/queries/generate_thumbnail_query.dart';
 import 'package:kidflix/core/domain/model/source.dart';
 import 'package:kidflix/ui/settings/settings.page.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'services/app_lock.service.dart';
 
@@ -37,6 +37,16 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   Map<String, dynamic>? _currentEpisode;
   List<Map<String, dynamic>> _downloadedEpisodes = [];
   bool _shuffleEpisodes = false;
+
+  // Getters pour les queries et commandes
+  GetAllSourcesQuery get _getAllSourcesQuery =>
+      ref.read(getAllSourcesQueryProvider);
+  ValidateUnlockCodeQuery get _validateUnlockCodeQuery =>
+      ref.read(validateUnlockCodeQueryProvider);
+  GetThumbnailQuery get _getThumbnailQuery =>
+      ref.read(getThumbnailQueryProvider);
+  GenerateThumbnailQuery get _generateThumbnailQuery =>
+      ref.read(generateThumbnailQueryProvider);
 
   @override
   void initState() {
@@ -98,8 +108,7 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   }
 
   Future<void> _loadSources() async {
-    final getAllSourcesQuery = ref.read(getAllSourcesQueryProvider);
-    final sources = await getAllSourcesQuery();
+    final sources = await _getAllSourcesQuery();
     setState(() {
       _sources = sources;
     });
@@ -382,8 +391,7 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
   }
 
   void _validateCode() async {
-    final validateUnlockCodeQuery = ref.read(validateUnlockCodeQueryProvider);
-    final isValid = await validateUnlockCodeQuery.validateCode(
+    final isValid = await _validateUnlockCodeQuery.validateCode(
       _codeController.text,
     );
 
@@ -705,69 +713,26 @@ class _VideoplayerPageState extends ConsumerState<VideoplayerPage> {
       final episodeName = episode['episodeName'] as String;
       final url = episode['url'] as String;
 
-      // Chercher dans les miniatures sauvegardées
-      final prefs = await SharedPreferences.getInstance();
-      final thumbnailsJson = prefs.getString('thumbnails_$sourceName');
+      // Essayer de récupérer la miniature existante
+      final thumbnail = await _getThumbnailQuery.execute(
+        sourceName: sourceName,
+        episodeName: episodeName,
+        episodeIndex: 0, // Index par défaut pour le lecteur vidéo
+      );
 
-      if (thumbnailsJson != null) {
-        final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
-        final thumbnails = thumbnailsMap.map(
-          (key, value) => MapEntry(int.parse(key), value as String),
-        );
-
-        // Chercher la miniature correspondante par nom d'épisode
-        for (final entry in thumbnails.entries) {
-          final thumbnailPath = entry.value;
-          final file = File(thumbnailPath);
-          if (await file.exists()) {
-            // Vérifier si le nom du fichier contient le nom de l'épisode
-            if (thumbnailPath.contains(
-              episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_'),
-            )) {
-              return thumbnailPath;
-            }
-          }
-        }
+      if (thumbnail != null) {
+        return thumbnail.filePath;
       }
 
-      // Si pas de miniature trouvée, essayer de la générer depuis le fichier local
+      // Générer une nouvelle miniature si nécessaire
       if (url.isNotEmpty) {
-        final directory = await getApplicationDocumentsDirectory();
-        final thumbnailPath = '${directory.path}/thumbnails';
-        final thumbnailDir = Directory(thumbnailPath);
-        if (!await thumbnailDir.exists()) {
-          await thumbnailDir.create(recursive: true);
-        }
-
-        final safeName = episodeName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-        final thumbnailFileName = 'thumbnail_${sourceName}_$safeName.jpg';
-        final thumbnailFilePath = '$thumbnailPath/$thumbnailFileName';
-
-        // Vérifier si la miniature existe déjà
-        final existingThumbnail = File(thumbnailFilePath);
-        if (await existingThumbnail.exists()) {
-          return thumbnailFilePath;
-        }
-
-        // Générer la nouvelle miniature
-        final thumbnail = await VideoThumbnail.thumbnailFile(
-          video: url,
-          thumbnailPath: thumbnailPath,
-          imageFormat: ImageFormat.JPEG,
-          quality: 75,
-          maxWidth: 200,
-          maxHeight: 150,
-          timeMs: 1000,
+        final newThumbnail = await _generateThumbnailQuery.execute(
+          sourceName: sourceName,
+          episodeName: episodeName,
+          videoUrl: url,
+          episodeIndex: 0, // Index par défaut pour le lecteur vidéo
         );
-
-        if (thumbnail != null) {
-          // Renommer le fichier généré avec un nom plus descriptif
-          final generatedFile = File(thumbnail);
-          if (await generatedFile.exists()) {
-            await generatedFile.rename(thumbnailFilePath);
-            return thumbnailFilePath;
-          }
-        }
+        return newThumbnail.filePath;
       }
     } catch (e) {
       _showError('Erreur lors de la récupération de la miniature: $e');

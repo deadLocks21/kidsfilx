@@ -2,32 +2,45 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 
-class SettingsSourcePage extends StatefulWidget {
+import 'package:kidflix/core/application/queries/generate_thumbnail_query.dart';
+import 'package:kidflix/core/application/queries/get_thumbnails_for_source_query.dart';
+import 'package:kidflix/core/application/commands/delete_thumbnails_for_source_command.dart';
+import 'package:kidflix/core/domain/model/thumbnail.dart';
+
+class SettingsSourcePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> source;
 
   const SettingsSourcePage({super.key, required this.source});
 
   @override
-  State<SettingsSourcePage> createState() => _SettingsSourcePageState();
+  ConsumerState<SettingsSourcePage> createState() => _SettingsSourcePageState();
 }
 
-class _SettingsSourcePageState extends State<SettingsSourcePage> {
+class _SettingsSourcePageState extends ConsumerState<SettingsSourcePage> {
   List<Map<String, dynamic>> _episodes = [];
   bool _isLoading = true;
   bool _isDownloadingAll = false;
   bool _shouldStopDownload = false;
   final Set<int> _downloadingEpisodes = {};
   Set<int> _downloadedEpisodes = {};
-  Map<int, String> _thumbnails = {};
+  Map<int, Thumbnail> _thumbnails = {};
   final Map<int, bool> _generatingThumbnails = {};
   Map<int, String> _downloadedFiles = {};
   final Dio _dio = Dio();
+
+  // Getters pour les queries et commandes
+  GetThumbnailsForSourceQuery get _getThumbnailsForSourceQuery =>
+      ref.read(getThumbnailsForSourceQueryProvider);
+  GenerateThumbnailQuery get _generateThumbnailQuery =>
+      ref.read(generateThumbnailQueryProvider);
+  DeleteThumbnailsForSourceCommand get _deleteThumbnailsForSourceCommand =>
+      ref.read(deleteThumbnailsForSourceCommandProvider);
 
   @override
   void initState() {
@@ -213,32 +226,22 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
   }
 
   Future<void> _loadThumbnails() async {
-    final prefs = await SharedPreferences.getInstance();
-    final thumbnailsJson = prefs.getString(
-      'thumbnails_${widget.source['name']}',
-    );
-    if (thumbnailsJson != null) {
-      final Map<String, dynamic> thumbnailsMap = jsonDecode(thumbnailsJson);
+    try {
+      final thumbnails = await _getThumbnailsForSourceQuery.execute(widget.source['name']);
+      
       if (mounted) {
         setState(() {
-          _thumbnails = thumbnailsMap.map(
-            (key, value) => MapEntry(int.parse(key), value as String),
-          );
+          _thumbnails = {
+            for (final thumbnail in thumbnails)
+              thumbnail.episodeIndex: thumbnail
+          };
         });
       }
+    } catch (e) {
+      // Gérer l'erreur silencieusement
     }
   }
 
-  Future<void> _saveThumbnails() async {
-    final prefs = await SharedPreferences.getInstance();
-    final thumbnailsJson = jsonEncode(
-      _thumbnails.map((key, value) => MapEntry(key.toString(), value)),
-    );
-    await prefs.setString(
-      'thumbnails_${widget.source['name']}',
-      thumbnailsJson,
-    );
-  }
 
   Future<void> _loadDownloadedFiles() async {
     final prefs = await SharedPreferences.getInstance();
@@ -269,10 +272,10 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
   }
 
   Future<void> _generateThumbnail(int index) async {
-    if (_generatingThumbnails[index] == true ||
-        _thumbnails.containsKey(index)) {
+    if (_generatingThumbnails[index] == true || _thumbnails.containsKey(index)) {
       return;
     }
+    
     if (mounted) {
       setState(() {
         _generatingThumbnails[index] = true;
@@ -282,38 +285,20 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
     try {
       final episode = _episodes[index];
       final url = episode['url'] as String;
+      final name = episode['name'] as String;
 
-      final directory = await getApplicationDocumentsDirectory();
-      final thumbnailPath = '${directory.path}/thumbnails';
-      final thumbnailDir = Directory(thumbnailPath);
-      if (!await thumbnailDir.exists()) {
-        await thumbnailDir.create(recursive: true);
-      }
-
-      final thumbnail = await VideoThumbnail.thumbnailFile(
-        video: url,
-        thumbnailPath: thumbnailPath,
-        imageFormat: ImageFormat.JPEG,
-        quality: 75,
-        maxWidth: 200,
-        maxHeight: 150,
-        timeMs: 1000, // Prendre la miniature à 1 seconde
+      final thumbnail = await _generateThumbnailQuery.execute(
+        sourceName: widget.source['name'],
+        episodeName: name,
+        videoUrl: url,
+        episodeIndex: index,
       );
 
-      if (thumbnail != null) {
-        if (mounted) {
-          setState(() {
-            _thumbnails[index] = thumbnail;
-            _generatingThumbnails[index] = false;
-          });
-        }
-        await _saveThumbnails();
-      } else {
-        if (mounted) {
-          setState(() {
-            _generatingThumbnails[index] = false;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _thumbnails[index] = thumbnail;
+          _generatingThumbnails[index] = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -583,11 +568,10 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
       }
 
       // Supprimer toutes les miniatures
-      for (final thumbnailPath in _thumbnails.values) {
-        final thumbnailFile = File(thumbnailPath);
-        if (await thumbnailFile.exists()) {
-          await thumbnailFile.delete();
-        }
+      try {
+        await _deleteThumbnailsForSourceCommand.execute(widget.source['name']);
+      } catch (e) {
+        // Ignorer les erreurs de suppression des thumbnails
       }
 
       if (mounted) {
@@ -600,7 +584,6 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
 
       await _saveDownloadedEpisodes();
       await _saveDownloadedFiles();
-      await _saveThumbnails();
 
       _showSuccess('Tous les épisodes ont été supprimés');
     } catch (e) {
@@ -735,7 +718,7 @@ class _SettingsSourcePageState extends State<SettingsSourcePage> {
                                   )
                                 : _thumbnails.containsKey(episodeIndex)
                                 ? Image.file(
-                                    File(_thumbnails[episodeIndex]!),
+                                    File(_thumbnails[episodeIndex]!.filePath),
                                     width: 80,
                                     height: 60,
                                     fit: BoxFit.cover,
